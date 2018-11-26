@@ -1,3 +1,4 @@
+#define NEBULA_IMPL
 #include <nebula/nebula.h>
 #include <nebula/nebula_sugar.h>
 

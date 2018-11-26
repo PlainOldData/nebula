@@ -656,11 +656,10 @@ nbi_color_u32_to_flt(uint32_t c, float *color_4)
         color_4[3] = (float)(c4) / 255.f;
 }
 
+
 static void
 nbi_color_copy(float * src, float * dst) {
-        for(uint32_t i = 0; i < 4; i++) {
-                dst[i] = src[i];
-        }
+        memcpy(dst, src, sizeof(float) * 4);
 }
 
 
@@ -938,7 +937,8 @@ struct nb_ctx {
 uint32_t
 nbi_get_font_range_idx(struct nbi_font * font, uint32_t cp) {
         uint32_t result = font->range_count;
-        for(uint32_t i = 0; i < font->range_count; i++) {
+        uint32_t i;
+        for(i = 0; i < font->range_count; i++) {
                 struct nbi_font_range * range = font->ranges + i;
                 if(cp >= range->start && cp < range->end) {
                         result = i;
@@ -1070,7 +1070,8 @@ nb_ctx_create(
                 ctx->font_count = NB_ARRAY_COUNT(ctx->fonts);
         }
 
-        for(uint32_t i = 0; i < ctx->font_count; i++) {
+        uint32_t i;
+        for(i = 0; i < ctx->font_count; i++) {
                 nbi_font_init(ctx->fonts + i, finfo[i].ttf, finfo[i].height);
         }
 
@@ -1276,8 +1277,9 @@ nbi_find_element_by_hash(struct nb_buffer * buf, uint64_t hash_key) {
 
         struct nb_element * elems = nbi_buffer_mem(buf);
         uint32_t elem_count = nbi_buffer_used(buf) / sizeof(*elems);
+        uint32_t i;
 
-        for(uint32_t i = 0; i < elem_count; i++) {
+        for(i = 0; i < elem_count; i++) {
                 struct nb_element * it = elems + i;
                 if(it->hash == hash_key) {
                         result = it;
@@ -2484,7 +2486,8 @@ nb_get_font_tex_list(nb_ctx_t ctx, struct nb_font_tex * tex_list) {
         NB_ASSERT(ctx);
         NB_ASSERT(tex_list);
 
-        for(uint32_t i = 0; i < ctx->font_count; i++) {
+        uint32_t i;
+        for(i = 0; i < ctx->font_count; i++) {
                 tex_list[i] = ctx->fonts[i].tex;
         }
 
@@ -2730,12 +2733,13 @@ nbi_bez(
         struct nb_render_cmd * cmd = nbi_cmd_begin(buf, data, NB_RENDER_CMD_TYPE_LINES, &vtx);
 
         uint16_t seg_count = 16;
+        uint16_t si, i;
 
-        for(uint16_t si = 0; si < seg_count; si++) {
+        for(si = 0; si < seg_count; si++) {
                 data->i[data->i_count++] = vtx + si;
         }
 
-        for(uint16_t i = 0; i < seg_count; i++) {
+        for(i = 0; i < seg_count; i++) {
                 float t = (float)i / (float)(seg_count - 1);
                 float t2 = t * t;
                 float t3 = t2 * t;
@@ -2809,7 +2813,8 @@ nbi_line_adv(struct nbi_vtx_buf * buf, struct nbi_text_out * out) {
                 offset = (float)((int32_t)offset);
 
                 if(buf) {
-                        for(uint32_t i = out->vtx_start; i < buf->v_count; i += 8) {
+                        uint32_t i;
+                        for(i = out->vtx_start; i < buf->v_count; i += 8) {
                                 float * v = buf->v + i;
                                 *v += offset;
                         }
