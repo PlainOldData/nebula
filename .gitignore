@@ -1,0 +1,4 @@
+
+bin/
+*.sublime-project
+*.sublime-workspace

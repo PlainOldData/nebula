@@ -2782,7 +2782,7 @@ nbi_decode_utf8_cp(char * utf8, uint32_t * cp) {
                 *cp |= (*it++ & 0x3F);
         }
 
-        uint32_t result = (char *)it - utf8;
+        uint32_t result = (uint32_t)((char *)it - utf8);
         return result;
 }
 

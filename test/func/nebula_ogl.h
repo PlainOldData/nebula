@@ -45,6 +45,7 @@ nbgl_shutdown(
 
 
 #include <assert.h>
+#include <stdint.h>
 #include <string.h>
 
 
@@ -242,7 +243,7 @@ nbgl_render(int display_width, int display_height, struct nbgl_ctx *ctx, struct 
                                         mode,
                                         cmd->data.elem.count,
                                         GL_UNSIGNED_SHORT,
-                                        (void *)offset);
+                                        (void *)((uint64_t)offset));
                         }
                 }
         }
