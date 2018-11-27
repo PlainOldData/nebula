@@ -8,7 +8,6 @@
 #define NEB_GLFW_IMPL
 #include <nebula_glfw.h>
 
-
 void
 basic_demo(nb_ctx_t c, int *open)
 {
@@ -22,7 +21,7 @@ basic_demo(nb_ctx_t c, int *open)
 
 
         const char *but1_name = click_1 ? "*Clicked*" : "Click Me!";
-        if(nbs_button(vi, but1_name)) {
+        if(nbs_button2(vi, but1_name)) {
                 printf("Clicked!\n");
                 click_1 = click_1 ? 0 : 1;
 
@@ -246,10 +245,19 @@ inspector_demo(nb_ctx_t c, int *open)
         int flags = NB_VIEW_TITLE | NB_VIEW_CLOSE | NB_VIEW_MINIMIZE;
         nb_view_t vi = nbs_view_window_begin(c, name, size, pos, flags, open);
 
+        /* TEMP!! */
+        static int font_idx = 0;
+        if(nbs_button2(vi, "Button2")) {
+                font_idx = (font_idx + 1) % nb_get_font_count(c);
+                nb_debug_set_font(c, font_idx);
+        }
+
         nbs_text(vi, "State", buffer, NB_TEXT_ALIGN_LEFT);
 
+#if 0
         static char user_text[128];
         nbs_text_input(vi, "Text Input", user_text, sizeof(user_text), NB_TEXT_ALIGN_LEFT);
+#endif
 
         nbs_view_end(vi);
 }

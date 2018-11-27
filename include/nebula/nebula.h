@@ -66,11 +66,11 @@ typedef enum nb_identifier {
 
 
 /*
- *  2D envelop, represents the top left point, and its size.
+ *  2D rect, represents the top left point, and its size.
  */
-struct nb_env {
-        float point[2];
-        float size[2];
+struct nb_rect {
+        float x, y;
+        float w, h;
 };
 
 

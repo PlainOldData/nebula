@@ -203,6 +203,78 @@ nbs_button(nb_view_t view, const char *name)
 }
 
 
+/* TEMP!! */
+int
+nbs_button2(nb_view_t vi, const char *name) {
+        assert(name);
+
+        if(vi->mini) {
+                return 0;
+        }
+
+        struct nb_ctx * ctx = vi->ctx;
+
+        struct nb_element * ele = 0;
+        ele = nbi_buffer_push(vi->ctx->view_data.cached_e_next, sizeof(*ele));
+        ele->view_hash = vi->hash;
+        ele->hash = nbi_hash_str(name);
+
+        int has_inter = nbi_has_interaction(ctx, vi->hash, ele->hash);
+
+        float clip[4];
+        nbi_get_element_clip(vi, clip);
+
+        struct nb_rect rect = {
+                .x = (float)vi->cursor[0],
+                .y = (float)vi->cursor[1],
+                .w = (float)vi->inner_size[0],
+                .h = 25.0f,
+        };
+
+        /* color */
+        uint32_t color32 = 0xD36745FF;
+        if(has_inter && ctx->state.ptr_state == NBI_PTR_UP) {
+                color32 = 0xFAD595FF;
+        }
+        float color[4];
+        nbi_color_u32_to_flt(color32, color);
+
+        nbi_scissor_set(vi->cmds, clip);
+        nbi_box(vi->cmds, (float *)&rect, color, 4.0f);
+
+        float text_pad = 5.0f;
+        struct nb_rect text_rect = {
+                .x = rect.x + text_pad,
+                .y = rect.y + 16.0f,
+                .w = rect.w - text_pad * 2.0f,
+                .h = rect.h,
+        };
+
+        float text_clip[4];
+        nbi_rect_intersect(clip, (float *)&rect, text_clip);
+
+        uint32_t text_flags = NB_TEXT_ALIGN_CENTER | NBI_TEXT_FLAGS_TERM;
+
+        nbi_scissor_set(vi->cmds, text_clip);
+        nbi_text(vi->cmds, (float *)&text_rect, text_flags, NB_COLOR_WHITE, name);
+        nbi_scissor_clear(vi->cmds);
+
+        nbi_scissor_clear(vi->cmds);
+
+        vi->cursor[1] += (int)rect.h + 5;
+
+        /* set the ele for collisions */
+        ele->pos[0] = (int)rect.x; ele->pos[1] = (int)rect.y;
+        ele->size[0] = (int)rect.w; ele->size[1] = (int)rect.h;
+
+        int clicked = 0;
+        if(has_inter && ctx->state.ptr_state == NBI_PTR_UP_EVENT) {
+                clicked = 1;
+        }
+        return clicked;
+}
+
+
 int
 nbs_drag_int(nb_view_t view, const char *name, int *value)
 {
