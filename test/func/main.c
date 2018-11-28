@@ -50,8 +50,8 @@ basic_demo(nb_ctx_t c, int *open)
                 "";
         nbs_text(vi, "Text", placeholder_text, text_align);
 
-        static char user_text[128];
-        nbs_text_input(vi, "Basic Text Input", user_text, sizeof(user_text), text_align);
+        static char user_text[128] = "";
+        nbs_text_field(vi, "Basic Text Input", &user_text[0], sizeof(user_text));
 
         nbs_view_end(vi);
 }
@@ -253,11 +253,6 @@ inspector_demo(nb_ctx_t c, int *open)
         }
 
         nbs_text(vi, "State", buffer, NB_TEXT_ALIGN_LEFT);
-
-#if 0
-        static char user_text[128];
-        nbs_text_input(vi, "Text Input", user_text, sizeof(user_text), NB_TEXT_ALIGN_LEFT);
-#endif
 
         nbs_view_end(vi);
 }

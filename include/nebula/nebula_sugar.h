@@ -203,7 +203,7 @@ nbs_button(nb_view_t view, const char *name)
 }
 
 
-/* TEMP!! */
+/* Experimenting with an exposed renderer */
 int
 nbs_button2(nb_view_t vi, const char *name) {
         assert(name);
@@ -371,21 +371,6 @@ nbs_radio_buttons(nb_view_t view, const char **names, int *selection) {
 
 
 int
-nbs_text_(nb_view_t view, const char *name, struct nb_element_text * data) {
-        struct nb_element_desc desc = {
-                .type_id = NB_STRUCT_ELEMENT,
-                .name = name,
-                .data = (void *)data,
-        };
-
-        struct nb_interaction interaction;
-        nb_element_create(view, &desc, &interaction, 0);
-
-        return interaction.flags & NB_INTERACTION_CLICKED;
-}
-
-
-int
 nbs_text_field(nb_view_t vi, const char *name,  char *txt_buf, int txt_size) {
         struct nb_style style;
         nbsi_style_text_field(&style);
@@ -421,17 +406,6 @@ nbs_text(nb_view_t vi, const char *name, const char * txt, unsigned int align) {
         ele_desc.style = &style;
 
         nb_element_create(vi, &ele_desc, 0, 0);
-}
-
-int
-nbs_text_input(nb_view_t vi, const char *name, char * txt, unsigned int size, unsigned int align) {
-        struct nb_element_text data = {
-                .text = txt,
-                .len_max = size ? size - 1 : 0,
-                .user_input = 1,
-                .align_type = align,
-        };
-        return nbs_text_(vi, name, &data);
 }
 
 
