@@ -1,3 +1,6 @@
+#ifndef FONT_OPEN_SANS_INCLUDED
+#define FONT_OPEN_SANS_INCLUDED
+
 
 #define NB_OPEN_SANS_TTF_SIZE 217276
 static unsigned char NB_OPEN_SANS_TTF[] = {
@@ -18109,3 +18112,5 @@ static unsigned char NB_OPEN_SANS_TTF[] = {
 0xad, 0xb0, 0x95, 0xb4, 0x68, 0x58, 0xc3, 0xe2, 0xd7, 0x29, 0xff, 0x91,
 0xa4, 0xc7, 0x00, 0x00
 };
+
+#endif

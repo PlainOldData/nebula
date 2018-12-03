@@ -825,6 +825,7 @@ void nbi_scissor_clear(struct nbi_cmd_buf * buf);
 
 /* ---------------------------------------------------------- Common Types -- */
 
+
 struct nb_view {
         nb_ctx_t ctx;
         uint64_t hash;
@@ -893,13 +894,16 @@ struct nbi_state {
         float dt;
 };
 
+
 struct nbi_font_range {
         uint32_t start;
         uint32_t end;
         float height;
 };
 
+
 #define NBI_FONT_RANGE_COUNT_MAX 4
+
 
 struct nbi_font {
         struct nb_font_tex tex;

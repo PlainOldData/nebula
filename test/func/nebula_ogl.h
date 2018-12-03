@@ -18,7 +18,7 @@ struct nbgl_ctx {
 void
 nbgl_setup(
         struct nbgl_ctx *ctx,
-        struct nbr_ctx *nbr_ctx);
+        struct nb_renderer_ctx *nbr_ctx);
 
 
 void
@@ -26,7 +26,7 @@ nbgl_render(
         int display_width,
         int display_height,
         struct nbgl_ctx *ctx,
-        struct nbr_ctx *nbr_ctx);
+        struct nb_renderer_ctx *nbr_ctx);
 
 
 void
@@ -51,7 +51,9 @@ nbgl_shutdown(
 
 
 void
-nbgl_setup(struct nbgl_ctx *ctx, struct nbr_ctx *nbr_ctx)
+nbgl_setup(
+        struct nbgl_ctx *ctx,
+        struct nb_renderer_ctx *nbr_ctx)
 {
         unsigned int font_count = nb_get_font_count(nbr_ctx);
         assert(font_count);
@@ -160,7 +162,11 @@ nbgl_setup(struct nbgl_ctx *ctx, struct nbr_ctx *nbr_ctx)
 
 
 void
-nbgl_render(int display_width, int display_height, struct nbgl_ctx *ctx, struct nbr_ctx *nbr_ctx)
+nbgl_render(
+        int display_width,
+        int display_height,
+        struct nbgl_ctx *ctx,
+        struct nb_renderer_ctx *nbr_ctx)
 {
         /* get nebula render data */
         struct nb_render_data rd;
@@ -255,7 +261,8 @@ nbgl_render(int display_width, int display_height, struct nbgl_ctx *ctx, struct 
 
 
 void
-nbgl_shutdown(struct nbgl_ctx *ctx)
+nbgl_shutdown(
+        struct nbgl_ctx *ctx)
 {
         glDeleteProgram(ctx->pro);
         glDeleteVertexArrays(1, &ctx->vao);

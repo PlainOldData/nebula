@@ -35,16 +35,25 @@ struct nb_glfw_ctx {
 };
 
 
-int
-nb_glfw_setup(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx);
+struct nb_sugar_ctx;
 
 
 int
-nb_glfw_shutdown(struct nb_glfw_ctx *ctx);
+nb_glfw_setup(
+        struct nb_glfw_ctx *ctx,
+        struct nb_sugar_ctx *nb_ctx);
 
 
 int
-nb_glfw_tick(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx);
+nb_glfw_shutdown(
+        struct nb_glfw_ctx *ctx);
+
+
+
+int
+nb_glfw_tick(
+        struct nb_glfw_ctx *ctx,
+        struct nb_sugar_ctx *nb_ctx);
 
 
 #ifdef __cplusplus
@@ -62,6 +71,7 @@ nb_glfw_tick(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx);
 #define NEB_GLFW_IMPL_INCLUDED
 
 
+#include <nebula/sugar.h>
 #include <GL/gl3w.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,26 +83,29 @@ nb_glfw_tick(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx);
 
 void
 nb_glfw_resize_cb(
-        GLFWwindow* window,
+        GLFWwindow* win,
         int width,
         int height)
 {
-        struct nb_glfw_ctx * user_data = glfwGetWindowUserPointer(window);
+        struct nb_glfw_ctx * user_data = glfwGetWindowUserPointer(win);
 
         user_data->width = width;
         user_data->height = height;
 
-        glfwGetFramebufferSize(user_data->window, &user_data->display_width, &user_data->display_height);
+        glfwGetFramebufferSize(
+                user_data->window,
+                &user_data->display_width,
+                &user_data->display_height);
 }
 
 
 void
 nb_glfw_mouse_pos_cb(
-        GLFWwindow *window,
+        GLFWwindow *win,
         double x_pos,
         double y_pos)
 {
-        struct nb_glfw_ctx * user_data = glfwGetWindowUserPointer(window);
+        struct nb_glfw_ctx * user_data = glfwGetWindowUserPointer(win);
 
         user_data->ms_pos_x = (int)x_pos;
         user_data->ms_pos_y = (int)y_pos;
@@ -101,7 +114,7 @@ nb_glfw_mouse_pos_cb(
 
 void
 nb_glfw_mouse_button_cb(
-        GLFWwindow *window,
+        GLFWwindow *win,
         int mouse_button,
         int mouse_action,
         int mods)
@@ -112,11 +125,16 @@ nb_glfw_mouse_button_cb(
                 return;
         }
 
-        struct nb_glfw_ctx * user_data = glfwGetWindowUserPointer(window);
+        struct nb_glfw_ctx * user_data = glfwGetWindowUserPointer(win);
         user_data->ms_left_button_down = GLFW_RELEASE == mouse_action ? 0 : 1;
 }
 
-void nb_glfw_push_char(struct nb_glfw_ctx * ctx, char c) {
+
+static void
+nbi_glfw_push_char(
+        struct nb_glfw_ctx * ctx,
+        char c)
+{
         if(ctx->char_count < (NB_GLFW_CHAR_COUNT_MAX - 1)) {
                 ctx->chars[ctx->char_count++] = c;
                 ctx->chars[ctx->char_count] = 0;
@@ -126,12 +144,19 @@ void nb_glfw_push_char(struct nb_glfw_ctx * ctx, char c) {
         }
 }
 
+
 void
-nb_glfw_key_cb(GLFWwindow * window, int key, int scan_code, int action, int mods) {
-        (void)scan_code;
+nb_glfw_key_cb(
+        GLFWwindow * win,
+        int key,
+        int s_code,
+        int action,
+        int mods)
+{
+        (void)s_code;
         (void)mods;
 
-        struct nb_glfw_ctx * ctx = glfwGetWindowUserPointer(window);
+        struct nb_glfw_ctx * ctx = glfwGetWindowUserPointer(win);
         assert(ctx);
 
         if(key == GLFW_KEY_BACKSPACE) {
@@ -140,26 +165,26 @@ nb_glfw_key_cb(GLFWwindow * window, int key, int scan_code, int action, int mods
                                 ctx->chars[--ctx->char_count] = 0;
                         }
                         else {
-                                nb_glfw_push_char(ctx, '\b');
+                                nbi_glfw_push_char(ctx, '\b');
                         }
                 }
         }
         else if(key == GLFW_KEY_ENTER) {
                 if(action == GLFW_PRESS || action == GLFW_REPEAT) {
-                        nb_glfw_push_char(ctx, '\n');
+                        nbi_glfw_push_char(ctx, '\n');
                 }
         }
 }
 
 void
-nb_glfw_char_cb(GLFWwindow * window, unsigned int code_point) {
+nb_glfw_char_cb(GLFWwindow * win, unsigned int c_point) {
         /* Only support ASCII right now */
-        if(code_point > 31 && code_point < 127) {
-                struct nb_glfw_ctx * ctx = glfwGetWindowUserPointer(window);
+        if(c_point > 31 && c_point < 127) {
+                struct nb_glfw_ctx * ctx = glfwGetWindowUserPointer(win);
                 assert(ctx);
 
-                char c = (char)code_point;
-                nb_glfw_push_char(ctx, c);
+                char c = (char)c_point;
+                nbi_glfw_push_char(ctx, c);
         }
 }
 
@@ -168,7 +193,9 @@ nb_glfw_char_cb(GLFWwindow * window, unsigned int code_point) {
 
 
 int
-nb_glfw_setup(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx)
+nb_glfw_setup(
+        struct nb_glfw_ctx *ctx,
+        struct nb_sugar_ctx *nb_ctx)
 {
         memset(ctx, 0, sizeof(*ctx));
 
@@ -209,7 +236,7 @@ nb_glfw_setup(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx)
         glfwGetFramebufferSize(ctx->window, &ctx->display_width, &ctx->display_height);
 
         gl3wInit();
-        nbgl_setup(&ctx->gl_ctx, nb_ctx);
+        nbgl_setup(&ctx->gl_ctx, &nb_ctx->rdr_ctx);
 
         ctx->frame_start = glfwGetTime();
         ctx->dt = 0.0f;
@@ -219,7 +246,8 @@ nb_glfw_setup(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx)
 
 
 int
-nb_glfw_shutdown(struct nb_glfw_ctx *ctx)
+nb_glfw_shutdown(
+        struct nb_glfw_ctx *ctx)
 {
         /* clean up gl */
         nbgl_shutdown(&ctx->gl_ctx);
@@ -233,7 +261,9 @@ nb_glfw_shutdown(struct nb_glfw_ctx *ctx)
 
 
 int
-nb_glfw_tick(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx)
+nb_glfw_tick(
+        struct nb_glfw_ctx *ctx,
+        struct nb_sugar_ctx *nb_ctx)
 {
         /* update glfw */
         glfwPollEvents();
@@ -250,7 +280,7 @@ nb_glfw_tick(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx)
         ptr_desc.y = ctx->ms_pos_y;
         ptr_desc.interact = ctx->ms_left_button_down;
 
-        res = nb_state_set_pointer(nb_ctx, &ptr_desc);
+        res = nb_state_set_pointer(&nb_ctx->core_ctx, &ptr_desc);
         assert(res == NB_OK);
 
         struct nb_viewport_desc view_desc;
@@ -259,16 +289,16 @@ nb_glfw_tick(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx)
         view_desc.width = ctx->display_width;
         view_desc.height = ctx->display_height;
 
-        res = nb_state_set_viewport(nb_ctx, &view_desc);
+        res = nb_state_set_viewport(&nb_ctx->core_ctx, &view_desc);
         assert(res == NB_OK);
 
         if(!ctx->char_count) {
                 ctx->chars[0] = 0;
         }
-        nb_state_set_text_input(nb_ctx, ctx->chars);
+        nb_state_set_text_input(&nb_ctx->core_ctx, ctx->chars);
         ctx->char_count = 0;
 
-        nb_state_set_dt(nb_ctx, ctx->dt);
+        nb_state_set_dt(&nb_ctx->core_ctx, ctx->dt);
 
         double time = glfwGetTime();
         ctx->dt = (float)(time - ctx->frame_start);
