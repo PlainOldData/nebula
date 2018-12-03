@@ -2,7 +2,7 @@
 #define NEB_OGL3_INCLUDED
 
 
-#include <nebula/nebula.h>
+#include <nebula/renderer.h>
 
 
 struct nbgl_ctx {
@@ -18,7 +18,7 @@ struct nbgl_ctx {
 void
 nbgl_setup(
         struct nbgl_ctx *ctx,
-        struct nb_ctx *nb_ctx);
+        struct nbr_ctx *nbr_ctx);
 
 
 void
@@ -26,7 +26,7 @@ nbgl_render(
         int display_width,
         int display_height,
         struct nbgl_ctx *ctx,
-        struct nb_ctx *nb_ctx);
+        struct nbr_ctx *nbr_ctx);
 
 
 void
@@ -47,18 +47,19 @@ nbgl_shutdown(
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
+#include <stddef.h>
 
 
 void
-nbgl_setup(struct nbgl_ctx *ctx, struct nb_ctx *nb_ctx)
+nbgl_setup(struct nbgl_ctx *ctx, struct nbr_ctx *nbr_ctx)
 {
-        unsigned int font_count = nb_get_font_count(nb_ctx);
+        unsigned int font_count = nb_get_font_count(nbr_ctx);
         assert(font_count);
 
         unsigned int i;
 
         struct nb_font_tex font_tex_list[NB_FONT_COUNT_MAX];
-        nb_get_font_tex_list(nb_ctx, font_tex_list);
+        nb_get_font_tex_list(nbr_ctx, font_tex_list);
         for (i = 0; i < font_count; i++) {
                 struct nb_font_tex * f = font_tex_list + i;
 
@@ -159,12 +160,12 @@ nbgl_setup(struct nbgl_ctx *ctx, struct nb_ctx *nb_ctx)
 
 
 void
-nbgl_render(int display_width, int display_height, struct nbgl_ctx *ctx, struct nb_ctx *nb_ctx)
+nbgl_render(int display_width, int display_height, struct nbgl_ctx *ctx, struct nbr_ctx *nbr_ctx)
 {
         /* get nebula render data */
         struct nb_render_data rd;
         memset(&rd, 0, sizeof(rd));
-        nb_get_render_data(nb_ctx, &rd);
+        nb_get_render_data(nbr_ctx, &rd);
 
         /* setup gl */
         glDisable(GL_DEPTH_TEST);
@@ -187,7 +188,7 @@ nbgl_render(int display_width, int display_height, struct nbgl_ctx *ctx, struct 
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-        unsigned int f_idx = nb_debug_get_font(nb_ctx);
+        unsigned int f_idx = nb_debug_get_font(nbr_ctx);
         GLuint ftex = ctx->ftex[f_idx];
 
         glUniform1i(ctx->unitex, 0);
@@ -216,10 +217,11 @@ nbgl_render(int display_width, int display_height, struct nbgl_ctx *ctx, struct 
         glEnable(GL_SCISSOR_TEST);
 
         /* render */
-        for (unsigned int list_idx = 0; list_idx < rd.cmd_list_count; list_idx++) {
+        unsigned int list_idx, i;
+        for (list_idx = 0; list_idx < rd.cmd_list_count; list_idx++) {
                 struct nb_render_cmd_list * cmd_list = rd.cmd_lists + list_idx;
 
-                for (unsigned int i = 0; i < cmd_list->count; ++i) {
+                for (i = 0; i < cmd_list->count; ++i) {
                         struct nb_render_cmd * cmd = cmd_list->cmds + i;
 
                         if (cmd->type == NB_RENDER_CMD_TYPE_SCISSOR) {

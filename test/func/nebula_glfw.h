@@ -36,7 +36,7 @@ struct nb_glfw_ctx {
 
 
 int
-nb_glfw_setup(struct nb_glfw_ctx *ctx, struct nb_ctx *nb_ctx);
+nb_glfw_setup(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx);
 
 
 int
@@ -44,7 +44,7 @@ nb_glfw_shutdown(struct nb_glfw_ctx *ctx);
 
 
 int
-nb_glfw_tick(struct nb_glfw_ctx *ctx, struct nb_ctx *nb_ctx);
+nb_glfw_tick(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx);
 
 
 #ifdef __cplusplus
@@ -63,7 +63,6 @@ nb_glfw_tick(struct nb_glfw_ctx *ctx, struct nb_ctx *nb_ctx);
 
 
 #include <GL/gl3w.h>
-#include <nebula/nebula.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -169,7 +168,7 @@ nb_glfw_char_cb(GLFWwindow * window, unsigned int code_point) {
 
 
 int
-nb_glfw_setup(struct nb_glfw_ctx *ctx, struct nb_ctx *nb_ctx)
+nb_glfw_setup(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx)
 {
         memset(ctx, 0, sizeof(*ctx));
 
@@ -234,7 +233,7 @@ nb_glfw_shutdown(struct nb_glfw_ctx *ctx)
 
 
 int
-nb_glfw_tick(struct nb_glfw_ctx *ctx, struct nb_ctx *nb_ctx)
+nb_glfw_tick(struct nb_glfw_ctx *ctx, struct nbr_ctx *nb_ctx)
 {
         /* update glfw */
         glfwPollEvents();

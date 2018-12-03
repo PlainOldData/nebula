@@ -772,6 +772,7 @@ struct nbi_view_data {
 
 /* -------------------------------------------------- Internal Render Cmds -- */
 
+
 struct nbi_vtx_buf {
         float * v;
         unsigned int v_count;
@@ -779,6 +780,7 @@ struct nbi_vtx_buf {
         unsigned short * i;
         unsigned int i_count;
 };
+
 
 struct nbi_cmd_buf {
         struct nb_ctx * ctx;
@@ -802,6 +804,7 @@ nbi_bez(struct nbi_cmd_buf * buf,
         float * p2,
         float * p3,
         float * color);
+
 
 enum nbi_text_flags {
         NBI_TEXT_FLAGS_CURSOR = 1 << 15,
