@@ -90,11 +90,10 @@ nb_rect_contains(
 #define NB_ARRAY_DATA(ARR) &ARR[0]
 
 
-typedef int nb_result;
 typedef unsigned int nb_color;
 
 
-typedef enum nbi_ptr_state {
+typedef enum _nbi_ptr_state {
         NBI_PTR_UP,
         NBI_PTR_UP_EVENT,
         NBI_PTR_DOWN,
@@ -154,19 +153,17 @@ typedef enum _nbc_type_id {
 } nbc_type_id;
 
 
-typedef enum nb_identifier {
-        /* nb_result */
+typedef enum _nb_result {
         NB_OK,
         NB_FAIL,
         NB_INVALID_DESC,
         NB_INVALID_PARAMS,
+} nb_result;
 
-        /* interaction callbacks */
-        NB_INTERACT_DRAGGED,
-        NB_INTERACT_RESIZED,
-        NB_INTERACT_CLOSED,
-        NB_INTERACT_MINIMIZED,
-        NB_INTERACT_CLICKED,
+
+typedef enum nb_identifier {
+        /* nb_result */
+
 
         /* end */
         NB_ID_COUNT
@@ -194,9 +191,6 @@ struct nb_core_ctx {
         int inter_idx;
         unsigned long inter_id;
 };
-
-
-
 
 
 /* ----------------------------------------------------------------- Frame -- */
@@ -238,13 +232,17 @@ struct nb_collider_desc {
 };
 
 
+typedef enum _nb_interactions_flags {
+        NB_INTERACT_DRAGGED = 1 << 0,
+        NB_INTERACT_CLICKED = 1 << 1,
+        NB_INTERACT_HOVER = 1 << 2,
+} nb_interaction_flags;
+
+
 struct nb_interaction {
-        int clicked;
-        int held;
-        int hovered;
-        int dragged;
-        int drag_x;
-        int drag_y;
+        uint32_t flags;
+        float delta_x;
+        float delta_y;
 };
 
 
@@ -419,10 +417,24 @@ nbc_collider(
 
         /* interacting */
         if(out_inter) {
+                out_inter->flags = 0;
+
                 if(desc->unique_id == ctx->inter_id) {
-                        out_inter->hovered = 1;
-                } else {
-                        out_inter->hovered = 0;
+                        out_inter->flags |= NB_INTERACT_HOVER;
+
+                        if(ctx->state.ptr_state == NBI_PTR_DOWN) {
+                                out_inter->flags |= NB_INTERACT_DRAGGED;
+                        }
+
+                        if(ctx->state.ptr_state == NBI_PTR_UP_EVENT) {
+                                out_inter->flags |= NB_INTERACT_CLICKED;
+                        }
+
+                        if(ctx->state.ptr_state == NBI_PTR_DOWN) {
+                                out_inter->flags |= NB_INTERACT_DRAGGED;
+                                out_inter->delta_x = ctx->state.ptr_delta[0];
+                                out_inter->delta_y = ctx->state.ptr_delta[1];
+                        }
                 }
         }
 
@@ -443,10 +455,12 @@ nb_state_set_pointer(
         NB_ASSERT(desc->type_id == NB_STRUCT_POINTER);  /* must be correct id */
 
         if(!desc || !ctx) {
+                NB_ASSERT(0 && "NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
         if(desc->type_id != NB_STRUCT_POINTER) {
+                NB_ASSERT(0 && "NB_INVALID_DESC");
                 return NB_INVALID_DESC;
         }
 

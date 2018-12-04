@@ -12,7 +12,6 @@
 #include "nebula_font_awesome.h"
 
 
-
 #define NB_FONT_COUNT_MAX 16
 #define NB_TAU 6.2831853071
 

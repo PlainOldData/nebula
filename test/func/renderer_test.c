@@ -20,11 +20,16 @@ main() {
         while(nb_glfw_tick(&glfw_ctx, &nb_sugar_ctx)) {
         		nbs_frame_begin(&nb_sugar_ctx);
 
-                void *cmds = nbs_window_begin(&nb_sugar_ctx, "hello");
-                nbs_window_end(&nb_sugar_ctx, cmds);
+        		/* hello world */
+                struct nb_window * vi = 0;
+
+                vi = nbs_window_begin(&nb_sugar_ctx, "hello");
+                nbs_window_end(&nb_sugar_ctx, vi);
+
+				vi = nbs_window_begin(&nb_sugar_ctx, "world");
+                nbs_window_end(&nb_sugar_ctx, vi);
 
                 nbs_frame_submit(&nb_sugar_ctx);
-
 
                 glClearColor(0.157, 0.153, 0.161, 1);
                 glClear(GL_COLOR_BUFFER_BIT);
