@@ -532,7 +532,7 @@ nbi_push_round_corner(
 
         nbi_push_vtx(buf, pos[0], pos[1], color);
 
-        float d_angle = (NB_TAU * 0.25f) / (float)seg_count;
+        float d_angle = ((float)NB_TAU * 0.25f) / (float)seg_count;
 
         for(i = 0; i < (seg_count + 1); i++) {
                 float t = angle + d_angle * (float)i;
@@ -781,7 +781,7 @@ nbi_line_adv(struct nbi_vtx_buf * buf, struct nbi_text_out * out) {
                 if(out->align_type == NB_TEXT_ALIGN_CENTER) {
                         offset *= 0.5f;
                 }
-                offset = (float)((int32_t)offset);
+                offset = (float)((int)offset);
 
                 if(buf) {
                         unsigned int i;
@@ -1007,7 +1007,7 @@ nbr_text(
 
 short
 nbr_clamp_f32_to_i16(float x) {
-        return x < 32767.0f ? (x > -32768.0f ? (int16_t)x : -32768) : 32767;
+        return x < 32767.0f ? (x > -32768.0f ? (short)x : -32768) : 32767;
 }
 
 
