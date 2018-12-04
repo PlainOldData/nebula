@@ -24,18 +24,6 @@ typedef enum nb_render_cmd_type {
 } nb_render_cmd_type;
 
 
-struct nbi_view_data {
-
-        struct nb_buffer *cached_e_last;
-        struct nb_buffer *cached_e_next;
-
-        struct nb_buffer cached_e_a; /* array nb_element */
-        struct nb_buffer cached_e_b; /* array nb_element */
-
-        struct nb_buffer cached_v; /* array nb_view */
-};
-
-
 struct nb_render_elem {
         unsigned int offset;
         unsigned int count;
@@ -61,8 +49,6 @@ struct nb_render_cmd_list {
 
 
 struct nb_render_data {
-        struct nbi_view_data view_data;
-
         float * vtx;
         unsigned int vtx_count;
 
@@ -119,7 +105,6 @@ struct nbi_cmd_buf {
 };
 
 struct nb_renderer_ctx {
-        struct nbi_view_data view_data;
         struct nbi_font fonts[NB_FONT_COUNT_MAX];
         unsigned int font_count;
         struct nbi_font * font;
@@ -1063,16 +1048,13 @@ nb_get_render_data(
         data->idx_count = ctx->vtx_buf.i_count;
         data->cmd_list_count = 0;
 
-        struct nb_buffer *buf = &ctx->view_data.cached_v;
-        struct nb_view *view = nbi_buffer_mem(buf);
-
         unsigned int count = ctx->cmds_count;
         unsigned int i;
 
         for(i = 0; i < count; ++i) {
                 struct nbi_cmd_buf *cmd_buf = &ctx->cmds[i];
 
-                if (data->cmd_list_count >= NB_ARRAY_COUNT(data->cmd_lists)) {
+                if (data->cmd_list_count >= NB_ARR_COUNT(data->cmd_lists)) {
                         NB_ASSERT(!"Cmd list array full!");
                         break;
                 }

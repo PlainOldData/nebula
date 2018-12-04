@@ -89,14 +89,6 @@ nbs_init(struct nb_sugar_ctx * ctx) {
 
         NB_ZERO_MEM(ctx);
 
-        nbi_buffer_create(&ctx->rdr_ctx.view_data.cached_e_a, 1024);
-        nbi_buffer_create(&ctx->rdr_ctx.view_data.cached_e_b, 1024);
-
-        ctx->rdr_ctx.view_data.cached_e_last = &ctx->rdr_ctx.view_data.cached_e_a;
-        ctx->rdr_ctx.view_data.cached_e_next = &ctx->rdr_ctx.view_data.cached_e_b;
-
-        nbi_buffer_create(&ctx->rdr_ctx.view_data.cached_v, 1024);
-
         ctx->rdr_ctx.vtx_buf = (struct nbi_vtx_buf) {
                 .v = NB_ALLOC(65536 * sizeof(float)),
                 .i = NB_ALLOC(65536 * sizeof(unsigned short)),
@@ -108,10 +100,10 @@ nbs_init(struct nb_sugar_ctx * ctx) {
                 { .ttf = NB_PROGGY_TTF, .height = 11.0f, },
         };
 
-        ctx->rdr_ctx.font_count = NB_ARRAY_COUNT(finfo);
-        if(ctx->rdr_ctx.font_count > NB_ARRAY_COUNT(ctx->rdr_ctx.fonts)) {
+        ctx->rdr_ctx.font_count = NB_ARR_COUNT(finfo);
+        if(ctx->rdr_ctx.font_count > NB_ARR_COUNT(ctx->rdr_ctx.fonts)) {
                 NB_ASSERT(!"Specfied more fonts than can fit in fixed-size font array!!");
-                ctx->rdr_ctx.font_count = NB_ARRAY_COUNT(ctx->rdr_ctx.fonts);
+                ctx->rdr_ctx.font_count = NB_ARR_COUNT(ctx->rdr_ctx.fonts);
         }
 
         unsigned int i;
@@ -119,33 +111,7 @@ nbs_init(struct nb_sugar_ctx * ctx) {
                 nbi_font_init(ctx->rdr_ctx.fonts + i, finfo[i].ttf, finfo[i].height);
         }
 
-                ctx->rdr_ctx.font = ctx->rdr_ctx.fonts;
-
-        /* create default styles */
-        ctx->core_ctx.styles.view.bg_color = 0x575459FF;
-        ctx->core_ctx.styles.view.bg_color_hover = 0x6C726BFF;
-        ctx->core_ctx.styles.view.border_color = 0xD36745FF;
-        ctx->core_ctx.styles.view.text_color = 0xCFE4B6FF;
-        ctx->core_ctx.styles.view.border_size = 2;
-        ctx->core_ctx.styles.view.padding = 5;
-        ctx->core_ctx.styles.view.margin = 0;
-        ctx->core_ctx.styles.view.radius = 10;
-
-        ctx->core_ctx.styles.button.bg_color = 0xD36745FF;
-        ctx->core_ctx.styles.button.bg_color_hover = 0xFAD595FF;
-        ctx->core_ctx.styles.button.text_color = 0xCFE4B6FF;
-        ctx->core_ctx.styles.button.padding = 0;
-        ctx->core_ctx.styles.button.margin = 0;
-        ctx->core_ctx.styles.button.radius = 10;
-
-        ctx->core_ctx.styles.text_box = (struct nb_style) {
-                .bg_color = 0xB3B3B3FF,
-                .bg_color_hover = 0xD1D1D1FF,
-                .text_color = 0xCFE4B6FF,
-                .border_color = 0xD36745FF,
-                .radius = 5,
-        };
-
+        ctx->rdr_ctx.font = ctx->rdr_ctx.fonts;
 
         return NB_OK;
 }
@@ -154,20 +120,43 @@ nbs_init(struct nb_sugar_ctx * ctx) {
 void *
 nbs_window_begin(struct nb_sugar_ctx *ctx, const char *name) {
 
-                float rect[4];
-                rect[0] = 10;
-                rect[1] = 10;
-                rect[2] = 100;
-                rect[3] = 100;
+        if(!ctx || !name) {
+                return 0;
+        }
 
-                float color[4];
-                color[0] = 1.f;
+        struct nb_rect rect = nb_rect_create(10, 10, 100, 100);
+
+        /* imgui */
+        struct nb_collider_desc coll_desc;
+        coll_desc.type_id = NB_STRUCT_COLLIDER;
+        coll_desc.ext = 0;
+        coll_desc.index = 0;
+        coll_desc.unique_id = 1;
+        coll_desc.rect = &rect;
+
+        struct nb_interaction inter;
+
+        nbc_collider(&ctx->core_ctx, &coll_desc, &inter);
+
+        /* render */
+        float recti[4];
+        recti[0] = 10;
+        recti[1] = 10;
+        recti[2] = 100;
+        recti[3] = 100;
+
+        float color[4];
+        color[0] = 1.f;
+        color[1] = 0.f;
+        color[2] = 0.f;
+        color[3] = 1.f;
+
+        if(inter.hovered) {
                 color[1] = 1.f;
-                color[2] = 0.f;
-                color[3] = 1.f;
+        }
 
-                nbr_box(&ctx->rdr_ctx, &ctx->rdr_ctx.cmds[0], rect, color, 1.f);
-                ctx->rdr_ctx.cmds_count += 1;
+        nbr_box(&ctx->rdr_ctx, &ctx->rdr_ctx.cmds[0], recti, color, 1.f);
+        ctx->rdr_ctx.cmds_count += 1;
 }
 
 

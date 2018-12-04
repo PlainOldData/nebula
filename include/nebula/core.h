@@ -2,6 +2,54 @@
 #define NEB_CORE_INCLUDED
 
 
+/* -------------------------------------------------------- Core Utilities -- */
+
+
+struct nb_rect {
+        int x, y;
+        int w, h;
+};
+
+
+struct nb_rect
+nb_rect_create(int x, int y, int w, int h) {
+        struct nb_rect rect;
+        rect.x = x; rect.y = y;
+        rect.w = w; rect.h = h;
+
+        return rect;
+};
+
+
+int
+nb_rect_contains(
+        struct nb_rect r,
+        int x,
+        int y)
+{
+        if(x < r.x || y < r.y) {
+                return 0;
+        }
+
+        if(x > (r.x + r.w)) {
+                return 0;
+        }
+
+        if(y > (r.y + r.h)) {
+                return 0;
+        }
+
+        return 1;
+}
+
+
+/* ---------------------------------------------------------- Common Types -- */
+/*
+ *  General types and identifiers for Nebula, checking/logging the return codes
+ *  will generally reveal any issues in the calling code.
+ */
+
+
 #include <assert.h>
 #define NB_ASSERT(expr) assert(expr)
 
@@ -22,15 +70,8 @@
         } while(0)
 
 
-#define NB_ARRAY_COUNT(ARRAY) (sizeof((ARRAY)) / sizeof((ARRAY)[0]))
-#define NB_ARRAY_DATA(ARRAY) &ARRAY[0]
-
-
-/* ---------------------------------------------------------- Common Types -- */
-/*
- *  General types and identifiers for Nebula, checking/logging the return codes
- *  will generally reveal any issues in the calling code.
- */
+#define NB_ARR_COUNT(ARR) (sizeof((ARR)) / sizeof((ARR)[0]))
+#define NB_ARRAY_DATA(ARR) &ARR[0]
 
 
 typedef int nb_result;
@@ -54,36 +95,11 @@ typedef enum nb_text_align {
 } nb_text_align;
 
 
-struct nb_style {
-        nb_color bg_color;
-        nb_color bg_color_hover;
-        nb_color text_color;
-        nb_color border_color;
-        int border_size;
-
-        int offset_x;
-        int offset_y;
-        int disable_clip;
-
-        int padding;
-        int margin;
-        int radius;
-        int height;
-
-        nb_text_align align;
-};
-
 typedef enum nbi_ptr_view_state {
         NBI_PTR_VIEW_WAITING,
         NBI_PTR_VIEW_DRAGGING,
         NBI_PTR_VIEW_RESIZING,
 } nbi_ptr_view_state;
-
-struct nbi_style {
-        struct nb_style view;
-        struct nb_style button;
-        struct nb_style text_box;
-};
 
 
 struct nbi_state {
@@ -112,152 +128,59 @@ struct nbi_state {
 };
 
 
-typedef enum nb_identifier {
-        /* nb_result */
-        NB_OK,             /* success in the api call */
-        NB_FAIL,           /* internal failure for instance an allocation */
-        NB_INVALID_DESC,   /* a desciption struct is null or has invalid data */
-        NB_INVALID_PARAMS, /* one of the parmaters is invalid */
-
-        /* struct id */
+typedef enum _nbc_type_id {
         NB_STRUCT_CTX_CREATE,
         NB_STRUCT_VIEW,
         NB_STRUCT_ELEMENT,
         NB_STRUCT_POINTER,
         NB_STRUCT_VIEWPORT,
+        NB_STRUCT_COLLIDER,
+} nbc_type_id;
+
+
+typedef enum nb_identifier {
+        /* nb_result */
+        NB_OK,
+        NB_FAIL,
+        NB_INVALID_DESC,
+        NB_INVALID_PARAMS,
 
         /* interaction callbacks */
-        NB_INTERACT_DRAGGED,    /* when a window or element is dragged */
-        NB_INTERACT_RESIZED,    /* when a window is resized */
-        NB_INTERACT_CLOSED,     /* when a window is closed */
-        NB_INTERACT_MINIMIZED,  /* when a window is minimized */
-        NB_INTERACT_CLICKED,    /* when an element is clicked */
+        NB_INTERACT_DRAGGED,
+        NB_INTERACT_RESIZED,
+        NB_INTERACT_CLOSED,
+        NB_INTERACT_MINIMIZED,
+        NB_INTERACT_CLICKED,
 
-        /* view ids */
-        NB_VIEW_WINDOW,
-        NB_VIEW_NODE,
-
-        /* element ids */
-        NB_ELEMENT_TEXT,
-        NB_ELEMENT_BUTTON,
-        NB_ELEMENT_DRAG_FIELD,
-
-        NB_DATA_STRING,
-        NB_DATA_FLOAT,
-        NB_DATA_INT,
-
-        /* styles */
-        NB_STYLE_WINDOW,
-        NB_STYLE_BUTTON,
-
-        /* nothing past this - allows user to add their own id's */
+        /* end */
         NB_ID_COUNT
 } nb_identifier;
 
 
-
-
-struct nb_buffer {
-        unsigned char *mem;
-        int size;
-        int capacity;
+struct nbi_collider {
+        unsigned long unique_id;
+        int index;
+        struct nb_rect rect;
 };
 
-struct nb_buffer*
-nbi_buffer_alloc() {
-        struct nb_buffer *buf = (struct nb_buffer*)NB_ALLOC(sizeof(buf[0]));
-        NB_ZERO_MEM(buf);
-
-        return buf; }
-
-void nbi_buffer_free(struct nb_buffer *buf) { NB_FREE(buf); }
-
-
-void* nbi_buffer_mem(struct nb_buffer *buf) { return buf->mem; }
-int nbi_buffer_capcity(struct nb_buffer *buf) { return buf->capacity; }
-int nbi_buffer_used(struct nb_buffer *buf) { return buf->size; }
-
-
-void*
-nbi_buffer_create(struct nb_buffer *buf, int capacity)
-{
-        NB_ASSERT(buf);
-        NB_ASSERT(capacity);
-
-        buf->mem = NB_ALLOC(capacity);
-        NB_ZERO_MEM(buf->mem);
-
-        if(buf->mem) {
-                buf->size = 0;
-                buf->capacity = capacity;
-        }
-
-        return (void*)&buf->mem[buf->size];
-}
-
-
-void nbi_buffer_destroy(struct nb_buffer *buf) {
-        NB_FREE(buf->mem);
-        buf->mem = 0;
-}
-
-
-void*
-nbi_buffer_push(struct nb_buffer *buf, int size)
-{
-        NB_ASSERT(buf);
-        NB_ASSERT(size);
-
-        if(buf->size + size > buf->capacity) {
-                int needed_space = buf->size + size;
-                int capacity = 0;
-
-                while(capacity < needed_space) {
-                        capacity = buf->capacity * 2;
-                }
-
-                void *new_mem = NB_ALLOC(capacity);
-                NB_MEM_CPY(new_mem, buf->mem, buf->size);
-
-                buf->capacity = capacity;
-                buf->mem = new_mem;
-        }
-
-        void *addr = (void*)&buf->mem[buf->size];
-        buf->size += size;
-
-        return addr;
-}
-
-
-void
-nbi_buffer_clear(struct nb_buffer *buf)
-{
-        NB_ASSERT(buf);
-        buf->size = 0;
-}
-
-
-// struct nbi_view_data {
-
-//         struct nb_buffer *cached_e_last;
-//         struct nb_buffer *cached_e_next;
-
-//         struct nb_buffer cached_e_a; /* array nb_element */
-//         struct nb_buffer cached_e_b; /* array nb_element */
-
-//         struct nb_buffer cached_v; /* array nb_view */
-// };
 
 struct nb_core_ctx {
         void *user_data;
         unsigned long tick;
 
         struct nbi_state state;
-        struct nbi_style styles;
-        // struct nbi_view_data view_data;
 
+        /* colliders */
+        struct nbi_collider colliders[512];
+        int collider_count;
+
+        /* interacting */
+        int inter_idx;
+        unsigned long inter_id;
 };
+
+
+
 
 
 /* ----------------------------------------------------------------- Frame -- */
@@ -273,7 +196,7 @@ struct nb_core_ctx {
  */
 nb_result
 nb_frame_begin(
-        struct nb_core_ctx * ctx);
+        struct nb_core_ctx * ctx);                /* required */
 
 
 /*
@@ -283,7 +206,43 @@ nb_frame_begin(
  */
 nb_result
 nb_frame_submit(
-        struct nb_core_ctx * ctx);
+        struct nb_core_ctx * ctx);                /* required */
+
+
+/* -------------------------------------------------------------- Collider -- */
+
+
+struct nb_collider_desc {
+        nbc_type_id type_id;
+        void *ext;
+
+        int index;
+        unsigned long unique_id;
+        struct nb_rect * rect;
+};
+
+
+struct nb_interaction {
+        int clicked;
+        int held;
+        int hovered;
+        int dragged;
+        int drag_x;
+        int drag_y;
+};
+
+
+/*
+ * returns NB_OK if the collider was added.
+ * returns NB_INVALID_PARAMS if ctx or desc are null.
+ * returns NB_INVALID_DESC if desc type_id is not NB_STRUCT_COLLIDER.
+ * returns NB_FAIL if an internal error occured.
+ */
+nb_result
+nbc_collider(
+        struct nb_core_ctx * ctx,                 /* required */
+        struct nb_collider_desc * desc,           /* required */
+        struct nb_interaction * out_inter);       /* optional */
 
 
 /* ----------------------------------------------------------------- State -- */
@@ -293,7 +252,7 @@ nb_frame_submit(
  */
 
 struct nb_pointer_desc {
-        int type_id;
+        nbc_type_id type_id;
         void *ext;
 
         int x;
@@ -311,12 +270,12 @@ struct nb_pointer_desc {
  */
 nb_result
 nb_state_set_pointer(
-        struct nb_core_ctx * ctx,
-        struct nb_pointer_desc *desc);
+        struct nb_core_ctx * ctx,                 /* required */
+        struct nb_pointer_desc * desc);           /* required */
 
 
 struct nb_viewport_desc {
-        int type_id;
+        nbc_type_id type_id;
         void *ext;
 
         int width;
@@ -332,12 +291,14 @@ struct nb_viewport_desc {
  */
 nb_result
 nb_state_set_viewport(
-        struct nb_core_ctx * ctx,
-        struct nb_viewport_desc *desc);
+        struct nb_core_ctx * ctx,                 /* required */
+        struct nb_viewport_desc *desc);           /* required */
 
 
 nb_result
-nb_state_set_text_input(struct nb_core_ctx * ctx, char * text);
+nb_state_set_text_input(
+        struct nb_core_ctx * ctx,                 /* required */
+        char * text);                             /* optional */
 
 
 nb_result
@@ -359,8 +320,8 @@ struct nb_state {
 
 nb_result
 nb_state_get(
-        struct nb_core_ctx * ctx,
-        struct nb_state *out_state);
+        struct nb_core_ctx * ctx,                 /* required */
+        struct nb_state *out_state);              /* required */
 
 
 #endif
@@ -372,6 +333,82 @@ nb_state_get(
 #ifdef NEB_CORE_IMPL
 #ifndef NEB_CORE_IMPL_INCLUDED
 #define NEB_CORE_IMPL_INCLUDED
+
+/* -------------------------------------------------------------- Collider -- */
+
+
+nb_result
+nbc_collider(
+        struct nb_core_ctx * ctx,
+        struct nb_collider_desc * desc,
+        struct nb_interaction * out_inter)
+{
+        /* validate params */
+        if(!ctx || !desc) {
+                return NB_INVALID_PARAMS;
+                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+        }
+
+        if(desc->type_id != NB_STRUCT_COLLIDER) {
+                NB_ASSERT(0 && "NB_INVALID_DESC");
+                return NB_INVALID_DESC;
+        }
+
+        int desired_idx = desc->index;
+        int insert_idx = 0;
+        int count = ctx->collider_count;
+        int capacity = NB_ARR_COUNT(ctx->colliders);
+        int i;
+
+        /* find insert point */
+        if(!capacity) {
+                NB_ASSERT(0 && "NB_FAIL");
+                return NB_FAIL;
+        }
+
+        for(i = 0; i < count; ++i) {
+                if(ctx->colliders[i].index > desired_idx) {
+                        insert_idx = i;
+                        break;
+                };
+        };
+
+        /* check if space */
+        if(insert_idx > NB_ARR_COUNT(ctx->colliders)) {
+                NB_ASSERT(0 && "NB_FAIL");
+                return NB_FAIL;
+        }
+
+        /* shuffle array */
+        int dst_i = insert_idx + 1;
+        int src_i = insert_idx;
+
+        if(dst_i > capacity || src_i > dst_i) {
+                NB_ASSERT(0 && "NB_FAIL");
+                return NB_FAIL;
+        }
+
+        void *dst = (void*)&ctx->colliders[insert_idx + 1];
+        void *src = (void*)&ctx->colliders[insert_idx];
+        size_t size = sizeof(ctx->colliders[0]) * (capacity - insert_idx - 1); 
+        memmove(dst, src, size);
+
+        /* insert new collider */
+        ctx->colliders[insert_idx].rect = *desc->rect;
+        ctx->colliders[insert_idx].unique_id = desc->unique_id;
+        ctx->collider_count += 1;
+
+        /* interacting */
+        if(out_inter) {
+                if(desc->unique_id == ctx->inter_id) {
+                        out_inter->hovered = 1;
+                } else {
+                        out_inter->hovered = 0;
+                }
+        }
+        
+        return NB_OK;
+}
 
 
 /* ----------------------------------------------------------------- State -- */
@@ -422,7 +459,8 @@ nb_state_set_pointer(
                         state->ptr_ele_drop = state->ptr_ele;
                 }
                 else if(state->ptr_state >= NBI_PTR_DOWN) {
-                        state->ptr_state = NBI_PTR_UP_EVENT;                }
+                        state->ptr_state = NBI_PTR_UP_EVENT;
+                }
                 else {
                         state->ptr_state = NBI_PTR_UP;
                 }
@@ -461,7 +499,7 @@ nb_state_set_text_input(struct nb_core_ctx * ctx, char * text) {
 
         char * src = text;
         char * dst = state->text_input;
-        unsigned int len_max = NB_ARRAY_COUNT(state->text_input) - 1;
+        unsigned int len_max = NB_ARR_COUNT(state->text_input) - 1;
         unsigned int len = 0;
         while(*src && len < len_max) {
                 *dst++ = *src++;
@@ -582,6 +620,27 @@ nb_frame_submit(
                 NB_ASSERT(0 && "NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
+
+        ctx->inter_idx = 0;
+        ctx->inter_id = 0;
+
+        /* check collisions */
+        int i;
+        int coll_count = NB_ARR_COUNT(ctx->colliders);
+
+        for(i = 0; i < coll_count; ++i) {
+                int contains = nb_rect_contains(
+                        ctx->colliders[i].rect,
+                        (int)ctx->state.ptr_pos[0],
+                        (int)ctx->state.ptr_pos[1]);
+
+                if(contains == 1) {
+                        ctx->inter_idx = ctx->colliders[i].index;
+                        ctx->inter_id = ctx->colliders[i].unique_id;
+                }
+        }
+
+        ctx->collider_count = 0;
 
         return NB_OK;
 }
