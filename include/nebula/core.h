@@ -238,8 +238,6 @@ nbi_buffer_clear(struct nb_buffer *buf)
 }
 
 
-
-
 // struct nbi_view_data {
 
 //         struct nb_buffer *cached_e_last;
@@ -345,6 +343,7 @@ nb_state_set_text_input(struct nb_core_ctx * ctx, char * text);
 nb_result
 nb_state_set_dt(struct nb_core_ctx * ctx, float dt);
 
+
 struct nb_state {
         int ptr_x, ptr_y;
         int ptr_dx, ptr_dy;
@@ -358,7 +357,16 @@ struct nb_state {
 };
 
 
+nb_result
+nb_state_get(
+        struct nb_core_ctx * ctx,
+        struct nb_state *out_state);
+
+
 #endif
+
+
+/* ================================== IMPL ================================== */
 
 
 #ifdef NEB_CORE_IMPL
@@ -577,7 +585,6 @@ nb_frame_submit(
 
         return NB_OK;
 }
-
 
 
 #endif

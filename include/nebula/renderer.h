@@ -41,20 +41,24 @@ struct nb_render_elem {
         unsigned int count;
 };
 
+
 union nb_render_cmd_data {
         struct nb_render_elem elem;
         short clip_rect[4];
 };
+
 
 struct nb_render_cmd {
         unsigned int type;
         union nb_render_cmd_data data;
 };
 
+
 struct nb_render_cmd_list {
         struct nb_render_cmd * cmds;
         unsigned int count;
 };
+
 
 struct nb_render_data {
         struct nbi_view_data view_data;
@@ -73,6 +77,7 @@ struct nb_render_data {
 /* This isn't going to stay around */
 #define NB_FONT_COUNT_MAX 16
 #define NBI_FONT_RANGE_COUNT_MAX 4
+
 
 struct nb_font_tex {
         unsigned char * mem;
@@ -127,6 +132,82 @@ struct nb_renderer_ctx {
 };
 
 
+/* -------------------------------------------------------------- Lifetime -- */
+
+
+/*
+ * return NB_OK if the new frame has started
+ * return NB_INVALID_PARAMS if ctx if not valid
+ * return NB_FAIL if an internal error occured
+ */
+nb_result
+nbr_frame_begin(
+        struct nb_renderer_ctx * ctx);
+
+
+/*
+ * return NB_OK if the new frame was submitted
+ * return NB_INVALID_PARAMS if ctx is not valid
+ * return NB_FAIL if an internal error occured
+ */
+nb_result
+nbr_frame_submit(
+        struct nb_renderer_ctx * ctx);
+
+
+/* ----------------------------------------------------------------- Fonts -- */
+
+
+unsigned int
+nb_get_font_count(
+        struct nb_renderer_ctx *ctx);
+
+
+nb_result
+nb_get_font_tex_list(
+        struct nb_renderer_ctx *ctx,
+        struct nb_font_tex * tex_list);
+
+
+/* DEBUG!! */
+nb_result
+nb_debug_set_font(
+        struct nb_renderer_ctx *ctx,
+        unsigned int idx);
+
+
+/* DEBUG!! */
+unsigned int
+nb_debug_get_font(
+        struct nb_renderer_ctx *ctx);
+
+
+void
+nbi_push_font_range(
+        struct nbi_font * font,
+        stbtt_pack_context * stbtt,
+        unsigned char * ttf,
+        unsigned int start,
+        unsigned int end,
+        float height);
+
+
+unsigned int
+nbi_get_font_range_idx(
+        struct nbi_font * font,
+        unsigned int cp);
+
+
+void
+nbi_font_init(
+        struct nbi_font * font,
+        unsigned char * ttf,
+        float height);
+
+
+/* ------------------------------------------------------- Render Commands -- */
+
+
 /*
  * Get the render cmds
  * returns NB_OK on success
@@ -134,34 +215,9 @@ struct nb_renderer_ctx {
  * returns NB_INVALID_PARAMS if ctx or data is null
  */
 nb_result
-nb_get_render_data(struct nb_renderer_ctx *ctx, struct nb_render_data * data);
-
-
-unsigned int
-nb_get_font_count(struct nb_renderer_ctx *ctx);
-
-
-nb_result
-nb_get_font_tex_list(struct nb_renderer_ctx *ctx, struct nb_font_tex * tex_list);
-
-
-/* DEBUG!! */
-nb_result
-nb_debug_set_font(struct nb_renderer_ctx *ctx, unsigned int idx);
-
-
-/* DEBUG!! */
-unsigned int
-nb_debug_get_font(struct nb_renderer_ctx *ctx);
-
-
-
-struct nbr_cmd_buf {
-        struct nb_renderer_ctx * ctx;
-
-        struct nb_render_cmd cmds[4096];
-        unsigned int cmd_count;
-};
+nb_get_render_data(
+        struct nb_renderer_ctx *ctx,
+        struct nb_render_data * data);
 
 
 void
@@ -230,35 +286,50 @@ nbr_scissor_clear(
         struct nbi_cmd_buf * buf);
 
 
-
-static void
-nbi_push_font_range(struct nbi_font * font, stbtt_pack_context * stbtt, unsigned char * ttf, unsigned int start, unsigned int end, float height) {
-        unsigned int idx = font->range_count++;
-        struct nbi_font_range * range = font->ranges + idx;
-        *range = (struct nbi_font_range) {
-                .start = start,
-                .end = end,
-                .height = height,
-        };
-
-        unsigned int char_count = range->end - range->start;
-        font->range_data[idx] = NB_ALLOC(sizeof(stbtt_packedchar) * char_count);
-        stbtt_PackFontRange(stbtt, ttf, 0, height, range->start, char_count, font->range_data[idx]);
-}
-
 unsigned int
-nbi_get_font_range_idx(struct nbi_font * font, unsigned int cp) {
-        unsigned int result = font->range_count;
-        unsigned int i;
-        for(i = 0; i < font->range_count; i++) {
-                struct nbi_font_range * range = font->ranges + i;
-                if(cp >= range->start && cp < range->end) {
-                        result = i;
-                        break;
-                }
-        }
-        return result;
-}
+nbi_char_valid(struct nbi_font * font, unsigned int cp);
+
+
+
+void
+nbi_get_glyph_quad(
+        struct nbi_font * font,
+        unsigned int cp,
+        float * x,
+        float * y,
+        stbtt_aligned_quad * q);
+
+
+float
+nbi_get_glyph_width(
+        struct nbi_font * font,
+        unsigned int cp);
+
+
+#endif
+
+
+/* ================================== IMPL ================================== */
+
+
+#ifdef NEB_RENDERER_IMPL
+#ifndef NEBULA_RENDERER_IMPL_INCLUDED
+#define NEBULA_RENDERER_IMPL_INCLUDED
+
+
+static float NB_COLOR_WHITE[4] = { 1.0f, 1.0f, 1.0f, 1.0f, };
+static float NB_COLOR_DARK_GRAY[4] = { 0.3f, 0.3f, 0.3f, 1.0f, };
+static float NB_COLOR_LIGHT_GRAY[4] = { 0.7f, 0.7f, 0.7f, 1.0f, };
+
+#include "nebula_font_awesome.h"
+#include "nebula_font_open_sans.h"
+#include "nebula_font_proggy.h"
+
+#include <stdio.h>
+
+
+/* ----------------------------------------------------------- Text / Font -- */
+
 
 unsigned int
 nbi_char_valid(struct nbi_font * font, unsigned int cp) {
@@ -300,69 +371,6 @@ nbi_get_glyph_width(struct nbi_font * font, unsigned int cp) {
 }
 
 
-static void
-nbi_font_init(struct nbi_font * font, unsigned char * ttf, float height) {
-        font->tex.width = 512;
-        font->tex.mem = NB_ALLOC(font->tex.width * font->tex.width);
-
-        font->height = height;
-
-        stbtt_pack_context stbtt;
-        stbtt_PackBegin(&stbtt, font->tex.mem, font->tex.width, font->tex.width, font->tex.width, 1, 0);
-        /*stbtt_PackSetOversampling(&stbtt, 2, 2);*/
-
-        font->range_count = 0;
-        nbi_push_font_range(font, &stbtt, ttf, 32, 127, height);
-        nbi_push_font_range(font, &stbtt, NB_FONT_AWESOME_TTF, NB_FA_CODE_MIN, NB_FA_CODE_MAX, 12.0f);
-
-        stbtt_PackEnd(&stbtt);
-
-        font->space_width = nbi_get_glyph_width(font, ' ');
-}
-
-
-/*
- * return NB_OK if the new frame has started
- * return NB_INVALID_PARAMS if ctx if not valid
- * return NB_FAIL if an internal error occured
- */
-nb_result
-nbr_frame_begin(
-        struct nb_renderer_ctx * ctx);
-
-
-/*
- * return NB_OK if the new frame was submitted
- * return NB_INVALID_PARAMS if ctx is not valid
- * return NB_FAIL if an internal error occured
- */
-nb_result
-nbr_frame_submit(
-        struct nb_renderer_ctx * ctx);
-
-
-#endif
-
-
-/* IMPL */
-
-
-#ifdef NEB_RENDERER_IMPL
-#ifndef NEBULA_RENDERER_IMPL_INCLUDED
-#define NEBULA_RENDERER_IMPL_INCLUDED
-
-
-static float NB_COLOR_WHITE[4] = { 1.0f, 1.0f, 1.0f, 1.0f, };
-static float NB_COLOR_DARK_GRAY[4] = { 0.3f, 0.3f, 0.3f, 1.0f, };
-static float NB_COLOR_LIGHT_GRAY[4] = { 0.7f, 0.7f, 0.7f, 1.0f, };
-
-#include "nebula_font_awesome.h"
-#include "nebula_font_open_sans.h"
-#include "nebula_font_proggy.h"
-
-#include <stdio.h>
-
-
 unsigned int
 nb_debug_get_font(
         struct nb_renderer_ctx * ctx)
@@ -379,6 +387,75 @@ nb_debug_get_font(
         NB_ASSERT(result < ctx->font_count);
         return result;
 }
+
+
+void
+nbi_push_font_range(
+        struct nbi_font * font,
+        stbtt_pack_context * stbtt,
+        unsigned char * ttf,
+        unsigned int start,
+        unsigned int end,
+        float height)
+{
+        unsigned int idx = font->range_count++;
+        struct nbi_font_range * range = font->ranges + idx;
+        *range = (struct nbi_font_range) {
+                .start = start,
+                .end = end,
+                .height = height,
+        };
+
+        unsigned int char_count = range->end - range->start;
+        font->range_data[idx] = NB_ALLOC(sizeof(stbtt_packedchar) * char_count);
+        stbtt_PackFontRange(stbtt, ttf, 0, height, range->start, char_count, font->range_data[idx]);
+}
+
+
+unsigned int
+nbi_get_font_range_idx(
+        struct nbi_font * font,
+        unsigned int cp)
+{
+        unsigned int result = font->range_count;
+        unsigned int i;
+
+        for(i = 0; i < font->range_count; i++) {
+                struct nbi_font_range * range = font->ranges + i;
+                if(cp >= range->start && cp < range->end) {
+                        result = i;
+                        break;
+                }
+        }
+        return result;
+}
+
+
+void
+nbi_font_init(
+        struct nbi_font * font,
+        unsigned char * ttf,
+        float height)
+{
+        font->tex.width = 512;
+        font->tex.mem = NB_ALLOC(font->tex.width * font->tex.width);
+        font->height = height;
+
+        stbtt_pack_context stbtt;
+        stbtt_PackBegin(&stbtt, font->tex.mem, font->tex.width, font->tex.width, font->tex.width, 1, 0);
+        /*stbtt_PackSetOversampling(&stbtt, 2, 2);*/
+
+        font->range_count = 0;
+        nbi_push_font_range(font, &stbtt, ttf, 32, 127, height);
+        nbi_push_font_range(font, &stbtt, NB_FONT_AWESOME_TTF, NB_FA_CODE_MIN, NB_FA_CODE_MAX, 12.0f);
+
+        stbtt_PackEnd(&stbtt);
+
+        font->space_width = nbi_get_glyph_width(font, ' ');
+}
+
+
+/* -------------------------------------------------------- Mesh Resources -- */
 
 
 static void
@@ -483,6 +560,67 @@ nbi_push_round_corner(
 }
 
 
+unsigned int
+nb_get_font_count(
+        struct nb_renderer_ctx * ctx)
+{
+        NB_ASSERT(ctx);
+        return ctx->font_count;
+}
+
+nb_result
+nb_get_font_tex_list(
+        struct nb_renderer_ctx * ctx,
+        struct nb_font_tex * tex_list)
+{
+        NB_ASSERT(ctx);
+        NB_ASSERT(tex_list);
+
+        unsigned int i;
+        for(i = 0; i < ctx->font_count; i++) {
+                tex_list[i] = ctx->fonts[i].tex;
+        }
+
+        return NB_OK;
+}
+
+
+static unsigned int
+nbi_decode_utf8_cp(
+        char * utf8,
+        unsigned int * cp)
+{
+        *cp = 0;
+
+        unsigned char * it = (unsigned char *)utf8;
+        unsigned char byte = *it++;
+        if((byte & 0x80) == 0) {
+                *cp = (unsigned int)byte;
+        }
+        else if((byte & 0xE0) == 0xC0) {
+                *cp =  (byte  & 0x1F) << 6;
+                *cp |= (*it++ & 0x3F);
+        }
+        else if((byte & 0xF0) == 0xE0) {
+                *cp =  (byte  & 0x0F) << 12;
+                *cp |= (*it++ & 0x3F) << 6;
+                *cp |= (*it++ & 0x3F);
+        }
+        else if((byte & 0xF8) == 0xF0) {
+                *cp =  (byte  & 0x07) << 18;
+                *cp |= (*it++ & 0x3F) << 12;
+                *cp |= (*it++ & 0x3F) << 6;
+                *cp |= (*it++ & 0x3F);
+        }
+
+        unsigned int result = (unsigned int)((char *)it - utf8);
+        return result;
+}
+
+
+/* ------------------------------------------------------- Render Commands -- */
+
+
 static struct nb_render_cmd *
 nbi_cmd_begin(
         struct nbi_cmd_buf * buf,
@@ -568,6 +706,7 @@ nbr_box(
         nbi_cmd_end(data, cmd);
 }
 
+
 void
 nbr_line(
         struct nb_renderer_ctx *ctx,
@@ -589,6 +728,7 @@ nbr_line(
 
         nbi_cmd_end(data, cmd);
 }
+
 
 void
 nbr_bez(
@@ -630,37 +770,6 @@ nbr_bez(
         nbi_cmd_end(data, cmd);
 }
 
-static unsigned int
-nbi_decode_utf8_cp(
-        char * utf8,
-        unsigned int * cp)
-{
-        *cp = 0;
-
-        unsigned char * it = (unsigned char *)utf8;
-        unsigned char byte = *it++;
-        if((byte & 0x80) == 0) {
-                *cp = (unsigned int)byte;
-        }
-        else if((byte & 0xE0) == 0xC0) {
-                *cp =  (byte  & 0x1F) << 6;
-                *cp |= (*it++ & 0x3F);
-        }
-        else if((byte & 0xF0) == 0xE0) {
-                *cp =  (byte  & 0x0F) << 12;
-                *cp |= (*it++ & 0x3F) << 6;
-                *cp |= (*it++ & 0x3F);
-        }
-        else if((byte & 0xF8) == 0xF0) {
-                *cp =  (byte  & 0x07) << 18;
-                *cp |= (*it++ & 0x3F) << 12;
-                *cp |= (*it++ & 0x3F) << 6;
-                *cp |= (*it++ & 0x3F);
-        }
-
-        unsigned int result = (unsigned int)((char *)it - utf8);
-        return result;
-}
 
 struct nbi_text_out {
         struct nbi_font * font;
@@ -675,6 +784,7 @@ struct nbi_text_out {
         unsigned int vtx_start;
         unsigned int align_type;
 };
+
 
 static void
 nbi_line_adv(struct nbi_vtx_buf * buf, struct nbi_text_out * out) {
@@ -937,25 +1047,6 @@ void nbr_scissor_clear(struct nbi_cmd_buf * buf) {
 }
 
 
-unsigned int
-nb_get_font_count(struct nb_renderer_ctx * ctx) {
-        NB_ASSERT(ctx);
-        return ctx->font_count;
-}
-
-nb_result
-nb_get_font_tex_list(struct nb_renderer_ctx * ctx, struct nb_font_tex * tex_list) {
-        NB_ASSERT(ctx);
-        NB_ASSERT(tex_list);
-
-        unsigned int i;
-        for(i = 0; i < ctx->font_count; i++) {
-                tex_list[i] = ctx->fonts[i].tex;
-        }
-
-        return NB_OK;
-}
-
 nb_result
 nb_get_render_data(
         struct nb_renderer_ctx * ctx,
@@ -999,7 +1090,10 @@ nb_get_render_data(
 }
 
 nb_result
-nb_debug_set_font(struct nb_renderer_ctx * ctx, unsigned int idx) {
+nb_debug_set_font(
+        struct nb_renderer_ctx * ctx,
+        unsigned int idx)
+{
         NB_ASSERT(ctx);
         NB_ASSERT(idx < ctx->font_count);
 
@@ -1007,6 +1101,9 @@ nb_debug_set_font(struct nb_renderer_ctx * ctx, unsigned int idx) {
 
         return NB_OK;
 }
+
+
+/* -------------------------------------------------------------- Lifetime -- */
 
 
 nb_result
