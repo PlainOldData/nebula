@@ -9,9 +9,18 @@
 #include "nebula_font_awesome.h"
 
 
+struct nb_window {
+        unsigned long unique_id;
+
+        struct nb_rect rect;
+};
+
+
 struct nb_sugar_ctx {
         struct nb_renderer_ctx rdr_ctx;
         struct nb_core_ctx core_ctx;
+
+        struct nb_window windows[32];
 };
 
 

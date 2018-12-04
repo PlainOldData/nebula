@@ -2,6 +2,22 @@
 #define NEB_CORE_INCLUDED
 
 
+#ifdef _MSC_VER
+        typedef signed   __int8  int8_t;
+        typedef unsigned __int8  uint8_t;
+        typedef signed   __int16 int16_t;
+        typedef unsigned __int16 uint16_t;
+        typedef signed   __int32 int32_t;
+        typedef unsigned __int32 uint32_t;
+        typedef signed   __int64 int64_t;
+        typedef unsigned __int64 uint64_t;
+        #include <stddef.h>
+#else
+        #include <stdint.h>
+        #include <stddef.h>
+#endif
+
+
 /* -------------------------------------------------------- Core Utilities -- */
 
 
@@ -302,7 +318,9 @@ nb_state_set_text_input(
 
 
 nb_result
-nb_state_set_dt(struct nb_core_ctx * ctx, float dt);
+nb_state_set_dt(
+        struct nb_core_ctx * ctx,                 /* required */
+        float dt);
 
 
 struct nb_state {
@@ -333,6 +351,7 @@ nb_state_get(
 #ifdef NEB_CORE_IMPL
 #ifndef NEB_CORE_IMPL_INCLUDED
 #define NEB_CORE_IMPL_INCLUDED
+
 
 /* -------------------------------------------------------------- Collider -- */
 
