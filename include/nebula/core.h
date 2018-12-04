@@ -345,8 +345,8 @@ nbc_collider(
 {
         /* validate params */
         if(!ctx || !desc) {
-                return NB_INVALID_PARAMS;
                 NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                return NB_INVALID_PARAMS;
         }
 
         if(desc->type_id != NB_STRUCT_COLLIDER) {
@@ -390,7 +390,7 @@ nbc_collider(
 
         void *dst = (void*)&ctx->colliders[insert_idx + 1];
         void *src = (void*)&ctx->colliders[insert_idx];
-        size_t size = sizeof(ctx->colliders[0]) * (capacity - insert_idx - 1); 
+        size_t size = sizeof(ctx->colliders[0]) * (capacity - insert_idx - 1);
         memmove(dst, src, size);
 
         /* insert new collider */
@@ -406,7 +406,7 @@ nbc_collider(
                         out_inter->hovered = 0;
                 }
         }
-        
+
         return NB_OK;
 }
 

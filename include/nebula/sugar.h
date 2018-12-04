@@ -64,6 +64,7 @@ int
 nbs_frame_begin(struct nb_sugar_ctx *ctx) {
         nb_frame_begin(&ctx->core_ctx);
         nbr_frame_begin(&ctx->rdr_ctx);
+        return 0;
 }
 
 
@@ -71,6 +72,7 @@ int
 nbs_frame_submit(struct nb_sugar_ctx *ctx) {
         nb_frame_submit(&ctx->core_ctx);
         nbr_frame_submit(&ctx->rdr_ctx);
+        return 0;
 }
 
 
@@ -157,6 +159,8 @@ nbs_window_begin(struct nb_sugar_ctx *ctx, const char *name) {
 
         nbr_box(&ctx->rdr_ctx, &ctx->rdr_ctx.cmds[0], recti, color, 1.f);
         ctx->rdr_ctx.cmds_count += 1;
+
+        return 0;
 }
 
 
