@@ -126,7 +126,7 @@ struct nb_renderer_ctx {
  */
 nb_result
 nbr_frame_begin(
-        struct nb_renderer_ctx * ctx);
+        struct nb_renderer_ctx * ctx);      /* required */
 
 
 /*
@@ -136,7 +136,9 @@ nbr_frame_begin(
  */
 nb_result
 nbr_frame_submit(
-        struct nb_renderer_ctx * ctx);
+        struct nb_renderer_ctx * ctx,       /* required */
+        struct nbi_cmd_buf ** cmd_bufs,     /* optional - null renders nothing */
+        int cmd_buf_count);                 /* optional - 0 renders nothing*/
 
 
 /* ----------------------------------------------------------------- Fonts -- */

@@ -168,15 +168,6 @@ typedef enum _nb_bool {
 } nb_bool;
 
 
-typedef enum nb_identifier {
-        /* nb_result */
-
-
-        /* end */
-        NB_ID_COUNT
-} nb_identifier;
-
-
 struct nbi_collider {
         unsigned long unique_id;
         int index;
@@ -218,7 +209,7 @@ struct nb_core_ctx {
  */
 nb_result
 nb_frame_begin(
-        struct nb_core_ctx * ctx);           /* required */
+        struct nb_core_ctx * ctx);          /* required */
 
 
 /*
@@ -228,7 +219,7 @@ nb_frame_begin(
  */
 nb_result
 nb_frame_submit(
-        struct nb_core_ctx * ctx);           /* required */
+        struct nb_core_ctx * ctx);          /* required */
 
 
 /* -------------------------------------------------------------- Collider -- */
@@ -241,25 +232,25 @@ nb_frame_submit(
 
 
 struct nb_collider_desc {
-        nbc_type_id type_id;                 /* Must be `NB_STRUCT_COLLIDER`. */
-        void *ext;                           /* Unused. */
-        int index;                           /* Order of the colliders, if the duplicates then newer one has higher priority. */
-        uint64_t unique_id;                  /* Used to determine what has collided. */
-        struct nb_rect * rect;               /* Area of the collider. */
+        nbc_type_id type_id;                /* Must be `NB_STRUCT_COLLIDER`. */
+        void *ext;                          /* Unused. */
+        int index;                          /* Order of the colliders, if the duplicates then newer one has higher priority. */
+        uint64_t unique_id;                 /* Used to determine what has collided. */
+        struct nb_rect * rect;              /* Area of the collider. */
 };
 
 
 typedef enum _nb_interactions_flags {
-        NB_INTERACT_DRAGGED = 1 << 0,        /* The pointer is held down on a collider. */
-        NB_INTERACT_CLICKED = 1 << 1,        /* The pointer is released on a collider. */
-        NB_INTERACT_HOVER = 1 << 2,          /* The pointer if hovering over a collider, will not be set if `NB_INTERACT_DRAGGED` is set. */
+        NB_INTERACT_DRAGGED = 1 << 0,       /* The pointer is held down on a collider. */
+        NB_INTERACT_CLICKED = 1 << 1,       /* The pointer is released on a collider. */
+        NB_INTERACT_HOVER = 1 << 2,         /* The pointer if hovering over a collider, will not be set if `NB_INTERACT_DRAGGED` is set. */
 } nb_interaction_flags;
 
 
 struct nb_interaction {
-        uint32_t flags;                      /* Contains `nb_interaction_flags` bits. */
-        float delta_x;                       /* If bit `NB_INTERACT_DRAGGED` is set then this is delta x for last frame */
-        float delta_y;                       /* If bit `NB_INTERACT_DRAGGED` is set then this is delta y for last frame */
+        uint32_t flags;                     /* Contains `nb_interaction_flags` bits. */
+        float delta_x;                      /* If bit `NB_INTERACT_DRAGGED` is set then this is delta x for last frame */
+        float delta_y;                      /* If bit `NB_INTERACT_DRAGGED` is set then this is delta y for last frame */
 };
 
 
@@ -272,9 +263,9 @@ struct nb_interaction {
  */
 nb_result
 nbc_collider(
-        struct nb_core_ctx * ctx,            /* required */
-        struct nb_collider_desc * desc,      /* required */
-        struct nb_interaction * out_inter);  /* optional */
+        struct nb_core_ctx * ctx,           /* required */
+        struct nb_collider_desc * desc,     /* required */
+        struct nb_interaction * out_inter); /* optional */
 
 
 /* ----------------------------------------------------------------- State -- */
@@ -301,15 +292,15 @@ struct nb_pointer_desc {
  */
 nb_result
 nb_state_set_pointer(
-        struct nb_core_ctx * ctx,            /* required */
-        struct nb_pointer_desc * desc);      /* required */
+        struct nb_core_ctx * ctx,           /* required */
+        struct nb_pointer_desc * desc);     /* required */
 
 
 struct nb_viewport_desc {
-        nbc_type_id type_id;                 /* Must be `NB_STRUCT_VIEWPORT`. */
-        void *ext;                           /* Unused. */
-        int width;                           /* Width of the viewport. */
-        int height;                          /* Height of the viewport. */
+        nbc_type_id type_id;                /* Must be `NB_STRUCT_VIEWPORT`. */
+        void *ext;                          /* Unused. */
+        int width;                          /* Width of the viewport. */
+        int height;                         /* Height of the viewport. */
 };
 
 
@@ -321,19 +312,19 @@ struct nb_viewport_desc {
  */
 nb_result
 nb_state_set_viewport(
-        struct nb_core_ctx * ctx,            /* required */
-        struct nb_viewport_desc *desc);      /* required */
+        struct nb_core_ctx * ctx,           /* required */
+        struct nb_viewport_desc *desc);     /* required */
 
 
 nb_result
 nb_state_set_text_input(
-        struct nb_core_ctx * ctx,            /* required */
-        char * text);                        /* optional */
+        struct nb_core_ctx * ctx,           /* required */
+        char * text);                       /* optional */
 
 
 nb_result
 nb_state_set_dt(
-        struct nb_core_ctx * ctx,            /* required */
+        struct nb_core_ctx * ctx,           /* required */
         float dt);
 
 
@@ -352,8 +343,8 @@ struct nb_state {
 
 nb_result
 nb_state_get(
-        struct nb_core_ctx * ctx,            /* required */
-        struct nb_state *out_state);         /* required */
+        struct nb_core_ctx * ctx,           /* required */
+        struct nb_state *out_state);        /* required */
 
 
 #endif
@@ -526,15 +517,14 @@ nb_state_set_viewport(
         struct nb_core_ctx * ctx,
         struct nb_viewport_desc *desc)
 {
-        NB_ASSERT(ctx);   /* required valid ctx */
-        NB_ASSERT(desc);  /* cannot be null */
-        NB_ASSERT(desc->type_id == NB_STRUCT_VIEWPORT); /* must be correct id */
-
+        /* validate */
         if(!desc || !ctx) {
+                NB_ASSERT(0 && "NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
         if(desc->type_id != NB_STRUCT_VIEWPORT) {
+                NB_ASSERT(0 && "NB_INVALID_DESC");
                 return NB_INVALID_DESC;
         }
 
@@ -673,8 +663,10 @@ nb_frame_submit(
                 return NB_INVALID_PARAMS;
         }
 
-        if(!ctx->frame_open == NB_FALSE) {
+        if(ctx->frame_open == NB_FALSE) {
+                /* Was `nb_frame_begin()` called */
                 NB_ASSERT(0 && "NB_CORRUPT_CALL");
+                return NB_CORRUPT_CALL;
         }
 
         ctx->frame_open = NB_FALSE;
@@ -690,7 +682,7 @@ nb_frame_submit(
 
         /* check collisions */
         int i;
-        int coll_count = NB_ARR_COUNT(ctx->colliders);
+        int coll_count = ctx->collider_count;
 
         for(i = 0; i < coll_count; ++i) {
                 int contains = nb_rect_contains(

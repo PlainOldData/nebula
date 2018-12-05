@@ -25,17 +25,17 @@ struct nb_sugar_ctx {
 
 int
 nbs_init(
-        struct nb_sugar_ctx * ctx);               /* required */
+        struct nb_sugar_ctx * ctx);         /* required */
 
 
 int
 nbs_frame_begin(
-        struct nb_sugar_ctx *ctx);                /* required */
+        struct nb_sugar_ctx *ctx);          /* required */
 
 
 int
 nbs_frame_submit(
-        struct nb_sugar_ctx *ctx);                /* required */
+        struct nb_sugar_ctx *ctx);          /* required */
 
 
 /* -------------------------------------------------------- Window widgets -- */
@@ -43,14 +43,14 @@ nbs_frame_submit(
 
 struct nb_window *
 nbs_window_begin(
-        struct nb_sugar_ctx *ctx,                 /* required */
-        const char *name);                        /* required */
+        struct nb_sugar_ctx *ctx,           /* required */
+        const char *name);                  /* required */
 
 
 void
 nbs_window_end(
-        struct nb_sugar_ctx *ctx,                 /* required */
-        struct nb_window *win);                   /* required */
+        struct nb_sugar_ctx *ctx,           /* required */
+        struct nb_window *win);             /* required */
 
 
 /* --------------------------------------------------------- Other widgets -- */
@@ -100,24 +100,28 @@ nbi_hash_str(const char *name) {
 /* -------------------------------------------------------- Window widgets -- */
 
 
-
-struct nb_window *
+nb_bool
 nbi_window_search(
-        struct nb_window *window_array,
-        int arr_count,
-        uint64_t hash_key)
+        struct nb_window *window_array,     /* required */
+        int arr_count,                      /* required - greater than zero */
+        uint64_t hash_key,                  /* required - greater than zero */
+        struct nb_window ** out_win,        /* required */
+        int * out_idx)                      /* required */
 {
         /* validate */
         if(!window_array || !arr_count || !hash_key) {
                 NB_ASSERT(0 && "NB_INVALID_PARAMS");
-                return 0;
+                return NB_FALSE;
         }
 
         /* see if there is a cached version */
         int i;
         for(i = 0; i < arr_count; ++i) {
                 if(window_array[i].unique_id == hash_key) {
-                        return &window_array[i];
+                        *out_idx = i;
+                        *out_win = &window_array[i];
+
+                        return NB_TRUE;
                 }
         }
 
@@ -134,13 +138,15 @@ nbi_window_search(
                         window_array[i].rect.w = 100;
                         window_array[i].rect.h = 150;
 
-                        return &window_array[i];
+                        *out_idx = i;
+                        *out_win = &window_array[i];
+
+                        return NB_TRUE;
                 }
         }
 
         NB_ASSERT(0 && "NB_FAIL - Window buffer too small");
-
-        return 0;
+        return NB_FALSE;
 }
 
 
@@ -156,13 +162,18 @@ nbs_window_begin(
 
         /* find or create a new window */
         uint64_t hash_key = nbi_hash_str(name);
-        struct nb_window *window = nbi_window_search(
+        struct nb_window *window = 0;
+        int win_idx = 0;
+        
+        nb_bool found = nbi_window_search(
                 ctx->windows,
                 NB_ARR_COUNT(ctx->windows),
-                hash_key);
+                hash_key,
+                &window,
+                &win_idx);
 
-        if(!window) {
-                NB_ASSERT(0 && "NB_FAIL - Failed to get buffer");
+        if(found == NB_FALSE) {
+                NB_ASSERT(0 && "NB_FAIL - Failed to get a window");
                 return 0;
         }
 
@@ -170,7 +181,7 @@ nbs_window_begin(
         struct nb_collider_desc coll_desc;
         coll_desc.type_id = NB_STRUCT_COLLIDER;
         coll_desc.ext = 0;
-        coll_desc.index = 0;
+        coll_desc.index = win_idx;
         coll_desc.unique_id = window->unique_id;
         coll_desc.rect = &window->rect;
 
@@ -199,6 +210,21 @@ nbs_window_begin(
                 color[2] = 1.f;
                 window->rect.x += inter.delta_x;
                 window->rect.y += inter.delta_y;
+
+                /* re-order cache if a background window was dragged */
+                if(win_idx > 0) {
+                        struct nb_window win_cpy = *window;
+                        window->unique_id = 0;
+
+                        void *dst = (void*)&ctx->windows[1];
+                        void *src = (void*)&ctx->windows[0];
+                        size_t size = sizeof(ctx->windows[0]) * (win_idx);
+
+                        memmove(dst, src, size);
+
+                        ctx->windows[0] = win_cpy;
+                        window = &ctx->windows[0];
+                }
         }
 
         if(inter.flags & NB_INTERACT_CLICKED) {
