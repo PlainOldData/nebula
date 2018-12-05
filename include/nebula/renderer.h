@@ -113,6 +113,9 @@ struct nb_renderer_ctx {
 
         struct nbi_cmd_buf cmds[256];
         int cmds_count;
+
+        struct nbi_cmd_buf *submited_cmds[256];
+        int cmds_submit_count;
 };
 
 
@@ -194,6 +197,12 @@ nbi_font_init(
 /* ------------------------------------------------------- Render Commands -- */
 
 
+nb_result
+nb_render_cmd_create(
+        struct nb_renderer_ctx * ctx,       /* required */
+        struct nbi_cmd_buf ** out_cmd);     /* required */
+
+
 /*
  * Get the render cmds
  * returns NB_OK on success
@@ -202,16 +211,16 @@ nbi_font_init(
  */
 nb_result
 nb_get_render_data(
-        struct nb_renderer_ctx *ctx,
-        struct nb_render_data * data);
+        struct nb_renderer_ctx *ctx,        /* required */
+        struct nb_render_data * data);      /* required */
 
 
 void
 nbr_box(
-        struct nb_renderer_ctx *ctx,
-        struct nbi_cmd_buf * buf,
-        float * rect,
-        float * color,
+        struct nb_renderer_ctx *ctx,        /* required */
+        struct nbi_cmd_buf * buf,           /* required */
+        float * rect,                       /* required float[4] */
+        float * color,                      /* required float[4] */
         float radius);
 
 
@@ -605,6 +614,25 @@ nbi_decode_utf8_cp(
 
 
 /* ------------------------------------------------------- Render Commands -- */
+
+
+nb_result
+nb_render_cmd_create(
+        struct nb_renderer_ctx * ctx,
+        struct nbi_cmd_buf ** out_cmd)
+{
+        if(!ctx || !out_cmd) {
+                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                return NB_INVALID_PARAMS;
+        }
+
+        size_t i = ctx->cmds_count;
+        *out_cmd = &ctx->cmds[i];
+
+        ctx->cmds_count += 1;
+
+        return NB_OK;
+}
 
 
 static struct nb_render_cmd *
@@ -1049,11 +1077,11 @@ nb_get_render_data(
         data->idx_count = ctx->vtx_buf.i_count;
         data->cmd_list_count = 0;
 
-        unsigned int count = ctx->cmds_count;
+        unsigned int count = ctx->cmds_submit_count;
         unsigned int i;
 
         for(i = 0; i < count; ++i) {
-                struct nbi_cmd_buf *cmd_buf = &ctx->cmds[i];
+                struct nbi_cmd_buf *cmd_buf = ctx->submited_cmds[i];
 
                 if (data->cmd_list_count >= NB_ARR_COUNT(data->cmd_lists)) {
                         NB_ASSERT(!"Cmd list array full!");
@@ -1117,12 +1145,33 @@ nbr_frame_begin(
 
 nb_result
 nbr_frame_submit(
-        struct nb_renderer_ctx * ctx)
+        struct nb_renderer_ctx * ctx,
+        struct nbi_cmd_buf ** cmd_bufs,
+        int cmd_buf_count)
 {
+        /* validate */
         if(!ctx) {
                 NB_ASSERT(0 && "NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
+
+        if(cmd_buf_count > NB_ARR_COUNT(ctx->submited_cmds)) {
+                NB_ASSERT(0 && "NB_FAIL - To many cmd buffers submitted");
+                return NB_FAIL;
+        }
+
+        if(cmd_buf_count > 0 && cmd_bufs == 0) {
+                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                return NB_INVALID_PARAMS;
+        }
+
+        /* push cmds into queue */
+        int i;
+        for(i = 0; i < cmd_buf_count; ++i) {
+                ctx->submited_cmds[i] = cmd_bufs[i];
+        }
+
+        ctx->cmds_submit_count = cmd_buf_count;
 
         return NB_OK;
 }

@@ -32,7 +32,7 @@ main() {
                 nbs_frame_submit(&nb_sugar_ctx);
 
                 glClearColor(0.157, 0.153, 0.161, 1);
-                glClear(GL_COLOR_BUFFER_BIT);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 nbgl_render(
                 		glfw_ctx.display_width,

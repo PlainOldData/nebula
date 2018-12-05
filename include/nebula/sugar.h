@@ -9,6 +9,8 @@
 struct nb_window {
         uint64_t unique_id;
         struct nb_rect rect;
+
+        struct nbi_cmd_buf *cmd_buf;
 };
 
 
@@ -177,6 +179,13 @@ nbs_window_begin(
                 return 0;
         }
 
+        nb_result ok = nb_render_cmd_create(&ctx->rdr_ctx, &window->cmd_buf);
+
+        if(ok != NB_OK) {
+                NB_ASSERT(0 && "NB_FAIL - Failed creating rdr cmd buffer");
+                return 0;
+        }
+
         /* imgui */
         struct nb_collider_desc coll_desc;
         coll_desc.type_id = NB_STRUCT_COLLIDER;
@@ -233,7 +242,7 @@ nbs_window_begin(
                 color[2] = 1.f;
         }
 
-        nbr_box(&ctx->rdr_ctx, &ctx->rdr_ctx.cmds[0], recti, color, 1.f);
+        nbr_box(&ctx->rdr_ctx, window->cmd_buf, recti, color, 1.f);
         ctx->rdr_ctx.cmds_count += 1;
 
         return 0;
@@ -273,8 +282,33 @@ int
 nbs_frame_submit(
         struct nb_sugar_ctx *ctx)
 {
+        /* core frame */
         nb_frame_submit(&ctx->core_ctx);
-        nbr_frame_submit(&ctx->rdr_ctx);
+
+        /* renderer frame */
+        struct nbi_cmd_buf *cmds[32];
+        int cmd_count = 0;
+
+        int win_count = NB_ARR_COUNT(ctx->windows);
+        int i;
+
+        /* build array of cmds */
+        for(i = 0; i < win_count; ++i) {
+                if(ctx->windows[i].unique_id > 0) {
+                        cmds[i] = ctx->windows[i].cmd_buf;
+                        cmd_count += 1;
+
+                        if(cmd_count >= NB_ARR_COUNT(cmds)) {
+                                break;
+                        }
+                }
+        }
+
+        nbr_frame_submit(
+                &ctx->rdr_ctx,
+                &cmds[0],
+                cmd_count);
+
         return 0;
 }
 
