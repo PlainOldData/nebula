@@ -171,7 +171,7 @@ nbs_window_begin(
         coll_desc.type_id = NB_STRUCT_COLLIDER;
         coll_desc.ext = 0;
         coll_desc.index = 0;
-        coll_desc.unique_id = 1;
+        coll_desc.unique_id = window->unique_id;
         coll_desc.rect = &window->rect;
 
         struct nb_interaction inter;

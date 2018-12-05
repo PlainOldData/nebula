@@ -158,7 +158,14 @@ typedef enum _nb_result {
         NB_FAIL,
         NB_INVALID_DESC,
         NB_INVALID_PARAMS,
+        NB_CORRUPT_CALL,
 } nb_result;
+
+
+typedef enum _nb_bool {
+        NB_FALSE,
+        NB_TRUE,
+} nb_bool;
 
 
 typedef enum nb_identifier {
@@ -190,13 +197,18 @@ struct nb_core_ctx {
         /* interacting */
         int inter_idx;
         unsigned long inter_id;
+
+        /* frame open */
+        int frame_open;
 };
 
 
 /* ----------------------------------------------------------------- Frame -- */
 /*
- *  Nebula works on frame, each frame you must submit what widows/ui to draw
- *  when the frame ends, you can query for the draw cmds.
+ *  Nebula works on frames, at the start of all nebula commands you must call
+ *  `nb_frame_begin()` followed by your nebula commands. Once finished you must
+ *  call `nb_frame_submit()` The next frame you will be informed of any
+ *  interactions the pointer had with colliders.
  */
 
 /*
@@ -206,7 +218,7 @@ struct nb_core_ctx {
  */
 nb_result
 nb_frame_begin(
-        struct nb_core_ctx * ctx);                /* required */
+        struct nb_core_ctx * ctx);           /* required */
 
 
 /*
@@ -216,33 +228,38 @@ nb_frame_begin(
  */
 nb_result
 nb_frame_submit(
-        struct nb_core_ctx * ctx);                /* required */
+        struct nb_core_ctx * ctx);           /* required */
 
 
 /* -------------------------------------------------------------- Collider -- */
+/*
+ * Adds a collider to the environment, if a collider has hit the pointer,
+ *
+ * Note: you must only add a collider between `nb_frame_begin()` and 
+ * `nb_frame_submit()`
+ */
 
 
 struct nb_collider_desc {
-        nbc_type_id type_id;
-        void *ext;
-
-        int index;
-        unsigned long unique_id;
-        struct nb_rect * rect;
+        nbc_type_id type_id;                 /* Must be `NB_STRUCT_COLLIDER`. */
+        void *ext;                           /* Unused. */
+        int index;                           /* Order of the colliders, if the duplicates then newer one has higher priority. */
+        uint64_t unique_id;                  /* Used to determine what has collided. */
+        struct nb_rect * rect;               /* Area of the collider. */
 };
 
 
 typedef enum _nb_interactions_flags {
-        NB_INTERACT_DRAGGED = 1 << 0,
-        NB_INTERACT_CLICKED = 1 << 1,
-        NB_INTERACT_HOVER = 1 << 2,
+        NB_INTERACT_DRAGGED = 1 << 0,        /* The pointer is held down on a collider. */
+        NB_INTERACT_CLICKED = 1 << 1,        /* The pointer is released on a collider. */
+        NB_INTERACT_HOVER = 1 << 2,          /* The pointer if hovering over a collider, will not be set if `NB_INTERACT_DRAGGED` is set. */
 } nb_interaction_flags;
 
 
 struct nb_interaction {
-        uint32_t flags;
-        float delta_x;
-        float delta_y;
+        uint32_t flags;                      /* Contains `nb_interaction_flags` bits. */
+        float delta_x;                       /* If bit `NB_INTERACT_DRAGGED` is set then this is delta x for last frame */
+        float delta_y;                       /* If bit `NB_INTERACT_DRAGGED` is set then this is delta y for last frame */
 };
 
 
@@ -250,13 +267,14 @@ struct nb_interaction {
  * returns NB_OK if the collider was added.
  * returns NB_INVALID_PARAMS if ctx or desc are null.
  * returns NB_INVALID_DESC if desc type_id is not NB_STRUCT_COLLIDER.
+ * returns NB_CORRUPT_CALL if not called between `nb_frame_begin` and `nb_frame_submit`
  * returns NB_FAIL if an internal error occured.
  */
 nb_result
 nbc_collider(
-        struct nb_core_ctx * ctx,                 /* required */
-        struct nb_collider_desc * desc,           /* required */
-        struct nb_interaction * out_inter);       /* optional */
+        struct nb_core_ctx * ctx,            /* required */
+        struct nb_collider_desc * desc,      /* required */
+        struct nb_interaction * out_inter);  /* optional */
 
 
 /* ----------------------------------------------------------------- State -- */
@@ -268,7 +286,6 @@ nbc_collider(
 struct nb_pointer_desc {
         nbc_type_id type_id;
         void *ext;
-
         int x;
         int y;
         float scroll_y;
@@ -277,47 +294,46 @@ struct nb_pointer_desc {
 
 
 /*
- * returns NB_OK on success
- * returns NB_INVALID_PARAMS if ctx or desc is null
- * returns NB_INVALID_DESC if desc type_id is not NB_STRUCT_POINTER
- * returns NB_FAIL if an internal error occured
+ * returns `NB_OK` on success
+ * returns `NB_INVALID_PARAMS` if ctx or desc is null
+ * returns `NB_INVALID_DESC` if desc type_id is not `NB_STRUCT_POINTER`
+ * returns `NB_FAIL` if an internal error occured
  */
 nb_result
 nb_state_set_pointer(
-        struct nb_core_ctx * ctx,                 /* required */
-        struct nb_pointer_desc * desc);           /* required */
+        struct nb_core_ctx * ctx,            /* required */
+        struct nb_pointer_desc * desc);      /* required */
 
 
 struct nb_viewport_desc {
-        nbc_type_id type_id;
-        void *ext;
-
-        int width;
-        int height;
+        nbc_type_id type_id;                 /* Must be `NB_STRUCT_VIEWPORT`. */
+        void *ext;                           /* Unused. */
+        int width;                           /* Width of the viewport. */
+        int height;                          /* Height of the viewport. */
 };
 
 
 /*
- * returns NB_OK on success
- * returns NB_INVALID_PARAMS if ctx or desc is null
- * returns NB_INVALID_DESC if desc type_id is not NB_STRUCT_VIEWPORT
- * returns NB_FAIL if an internal error occured
+ * returns `NB_OK` on success
+ * returns `NB_INVALID_PARAMS` if ctx or desc is null
+ * returns `NB_INVALID_DESC` if desc type_id is not `NB_STRUCT_VIEWPORT`
+ * returns `NB_FAIL` if an internal error occured
  */
 nb_result
 nb_state_set_viewport(
-        struct nb_core_ctx * ctx,                 /* required */
-        struct nb_viewport_desc *desc);           /* required */
+        struct nb_core_ctx * ctx,            /* required */
+        struct nb_viewport_desc *desc);      /* required */
 
 
 nb_result
 nb_state_set_text_input(
-        struct nb_core_ctx * ctx,                 /* required */
-        char * text);                             /* optional */
+        struct nb_core_ctx * ctx,            /* required */
+        char * text);                        /* optional */
 
 
 nb_result
 nb_state_set_dt(
-        struct nb_core_ctx * ctx,                 /* required */
+        struct nb_core_ctx * ctx,            /* required */
         float dt);
 
 
@@ -336,8 +352,8 @@ struct nb_state {
 
 nb_result
 nb_state_get(
-        struct nb_core_ctx * ctx,                 /* required */
-        struct nb_state *out_state);              /* required */
+        struct nb_core_ctx * ctx,            /* required */
+        struct nb_state *out_state);         /* required */
 
 
 #endif
@@ -360,7 +376,7 @@ nbc_collider(
         struct nb_collider_desc * desc,
         struct nb_interaction * out_inter)
 {
-        /* validate params */
+        /* validate params and state */
         if(!ctx || !desc) {
                 NB_ASSERT(0 && "NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
@@ -371,6 +387,12 @@ nbc_collider(
                 return NB_INVALID_DESC;
         }
 
+        if(!ctx->frame_open == NB_TRUE) {
+                /* Call this between`nb_frame_begin()` and `nb_frame_begin()` */
+                NB_ASSERT(0 && "NB_CORRUPT_CALL");
+                return NB_CORRUPT_CALL;
+        }
+
         int desired_idx = desc->index;
         int insert_idx = 0;
         int count = ctx->collider_count;
@@ -379,7 +401,7 @@ nbc_collider(
 
         /* find insert point */
         if(!capacity) {
-                NB_ASSERT(0 && "NB_FAIL");
+                NB_ASSERT(0 && "NB_FAIL - No capacity in colliders");
                 return NB_FAIL;
         }
 
@@ -392,7 +414,7 @@ nbc_collider(
 
         /* check if space */
         if(insert_idx > NB_ARR_COUNT(ctx->colliders)) {
-                NB_ASSERT(0 && "NB_FAIL");
+                NB_ASSERT(0 && "NB_FAIL - Out of collider space");
                 return NB_FAIL;
         }
 
@@ -401,7 +423,7 @@ nbc_collider(
         int src_i = insert_idx;
 
         if(dst_i > capacity || src_i > dst_i) {
-                NB_ASSERT(0 && "NB_FAIL");
+                NB_ASSERT(0 && "NB_FAIL - Cannot shuffle array");
                 return NB_FAIL;
         }
 
@@ -450,10 +472,6 @@ nb_state_set_pointer(
         struct nb_core_ctx * ctx,
         struct nb_pointer_desc *desc)
 {
-        NB_ASSERT(desc);  /* cannot be null */
-        NB_ASSERT(ctx);   /* cannot be null */
-        NB_ASSERT(desc->type_id == NB_STRUCT_POINTER);  /* must be correct id */
-
         if(!desc || !ctx) {
                 NB_ASSERT(0 && "NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
@@ -581,6 +599,7 @@ nb_result
 nb_frame_begin(
         struct nb_core_ctx * ctx)
 {
+        ctx->frame_open = NB_TRUE;
         // if(!ctx) {
         //         NB_ASSERT(0 && "NB_INVALID_PARAMS");
         //         return NB_INVALID_PARAMS;
@@ -652,6 +671,18 @@ nb_frame_submit(
         if(!ctx) {
                 NB_ASSERT(0 && "NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
+        }
+
+        if(!ctx->frame_open == NB_FALSE) {
+                NB_ASSERT(0 && "NB_CORRUPT_CALL");
+        }
+
+        ctx->frame_open = NB_FALSE;
+
+        /* bail if the pointer is being dragged */
+        if(ctx->state.ptr_state == NBI_PTR_DOWN) {
+                ctx->collider_count = 0;
+                return NB_OK;
         }
 
         ctx->inter_idx = 0;

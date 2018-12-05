@@ -605,6 +605,7 @@ static float NB_COLOR_LIGHT_GRAY[4] = { 0.7f, 0.7f, 0.7f, 1.0f, };
 #include "stb_truetype.h"
 #include <stdio.h>
 
+
 /* https://stackoverflow.com/questions/2535284/how-can-i-hash-a-string-to-an-int-using-c#13487193 */
 uint64_t
 nbi_hash_str(const char *name) {
