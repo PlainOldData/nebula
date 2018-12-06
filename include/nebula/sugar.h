@@ -16,7 +16,7 @@ struct nb_window {
 
 struct nb_sugar_ctx {
         struct nb_renderer_ctx rdr_ctx;
-        struct nb_core_ctx core_ctx;
+        nbc_ctx_t core_ctx;
 
         struct nb_window windows[32];
 };
@@ -43,7 +43,7 @@ nbs_frame_submit(
 /* -------------------------------------------------------- Window widgets -- */
 
 
-struct nb_window *
+const struct nb_window *
 nbs_window_begin(
         struct nb_sugar_ctx *ctx,           /* required */
         const char *name);                  /* required */
@@ -52,7 +52,15 @@ nbs_window_begin(
 void
 nbs_window_end(
         struct nb_sugar_ctx *ctx,           /* required */
-        struct nb_window *win);             /* required */
+        const struct nb_window *win);       /* required */
+
+
+/* returns 1 on click, 0 otherwise */
+int
+nbs_button(
+        struct nb_sugar_ctx *ctx,           /* required */
+        const struct nb_window *win,        /* required */
+        const char *name);                  /* required */
 
 
 /* --------------------------------------------------------- Other widgets -- */
@@ -80,6 +88,27 @@ nbs_window_end(
 
 #define NEB_RENDERER_IMPL
 #include <nebula/renderer.h>
+
+
+/* ---------------------------------------------- Stdlib / Config / Macros -- */
+/*
+ * Nebula uses stdlib for some things, you can override them here.
+ * Most of these macros are duplicated in core.h, renderer.h, sugar.h
+ */
+
+
+#include <assert.h>
+#define NB_ASSERT(expr) assert(expr)
+
+#include <stdlib.h>
+#define NB_ALLOC(bytes) malloc(bytes)
+#define NB_FREE(addr) free(addr)
+
+#include <string.h>
+#define NB_ZERO_MEM(ptr) do{memset((ptr), 0, sizeof((ptr)[0]));}while(0)
+
+#define NB_ARR_COUNT(ARR) (sizeof((ARR)) / sizeof((ARR)[0]))
+#define NB_ARRAY_DATA(ARR) &ARR[0]
 
 
 /* ------------------------------------------------------------- Utilities -- */
@@ -152,7 +181,7 @@ nbi_window_search(
 }
 
 
-struct nb_window *
+const struct nb_window *
 nbs_window_begin(
         struct nb_sugar_ctx *ctx,
         const char *name)
@@ -188,15 +217,13 @@ nbs_window_begin(
 
         /* imgui */
         struct nb_collider_desc coll_desc;
-        coll_desc.type_id = NB_STRUCT_COLLIDER;
-        coll_desc.ext = 0;
         coll_desc.index = win_idx;
         coll_desc.unique_id = window->unique_id;
         coll_desc.rect = &window->rect;
 
         struct nb_interaction inter;
 
-        nbc_collider(&ctx->core_ctx, &coll_desc, &inter);
+        nbc_collider(ctx->core_ctx, &coll_desc, &inter);
 
         /* render */
         float recti[4];
@@ -245,18 +272,50 @@ nbs_window_begin(
         nbr_box(&ctx->rdr_ctx, window->cmd_buf, recti, color, 1.f);
         ctx->rdr_ctx.cmds_count += 1;
 
-        return 0;
+        return window;
 }
 
 
 void
 nbs_window_end(
         struct nb_sugar_ctx * ctx,
-        struct nb_window * win)
+        const struct nb_window * win)
 {
         (void)ctx;
         (void)win;
 }
+
+
+int
+nbs_button(
+        struct nb_sugar_ctx *ctx,
+        const struct nb_window *win,
+        const char *name)
+{
+        if(!ctx || !win || !name || strlen(name) == 0) {
+                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                return 0;
+        }
+
+        uint64_t hash_key = nbi_hash_str(name);
+        
+        float recti[4];
+        recti[0] = 10;
+        recti[1] = 10;
+        recti[2] = 70;
+        recti[3] = 30;
+
+        float color[4];
+        color[0] = 1.f;
+        color[1] = 1.f;
+        color[2] = 1.f;
+        color[3] = 1.f;
+
+        nbr_box(&ctx->rdr_ctx, win->cmd_buf, recti, color, 1.f);
+
+        return 0;
+}
+
 
 
 /* --------------------------------------------------------- Other widgets -- */
@@ -272,7 +331,7 @@ int
 nbs_frame_begin(
         struct nb_sugar_ctx *ctx)
 {
-        nb_frame_begin(&ctx->core_ctx);
+        nb_frame_begin(ctx->core_ctx);
         nbr_frame_begin(&ctx->rdr_ctx);
         return 0;
 }
@@ -283,7 +342,7 @@ nbs_frame_submit(
         struct nb_sugar_ctx *ctx)
 {
         /* core frame */
-        nb_frame_submit(&ctx->core_ctx);
+        nb_frame_submit(ctx->core_ctx);
 
         /* renderer frame */
         struct nbi_cmd_buf *cmds[32];
@@ -317,6 +376,11 @@ int
 nbs_init(
         struct nb_sugar_ctx * ctx)
 {
+        NB_ZERO_MEM(ctx);
+
+        ctx->core_ctx = 0;
+        nbc_ctx_create(&ctx->core_ctx);
+        NB_ASSERT(ctx->core_ctx);
 
         // if(!desc || !new_ctx) {
         //         NB_ASSERT(0 && "NB_INVALID_PARAMS");
@@ -327,8 +391,6 @@ nbs_init(
         //         NB_ASSERT(0 && "NB_INVALID_DESC");
         //         return NB_INVALID_DESC;
         // }
-
-        NB_ZERO_MEM(ctx);
 
         ctx->rdr_ctx.vtx_buf = (struct nbi_vtx_buf) {
                 .v = NB_ALLOC(65536 * sizeof(float)),
@@ -356,6 +418,17 @@ nbs_init(
 
         return NB_OK;
 }
+
+
+/* ---------------------------------------------------------------- Config -- */
+
+
+#undef NB_ASSERT
+#undef NB_ALLOC
+#undef NB_FREE
+#undef NB_ZERO_MEM
+#undef NB_ARR_COUNT
+#undef NB_ARRAY_DATA
 
 
 #endif

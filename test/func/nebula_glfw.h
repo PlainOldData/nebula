@@ -273,32 +273,28 @@ nb_glfw_tick(
         nb_result res = NB_OK;
 
         struct nb_pointer_desc ptr_desc;
-        ptr_desc.type_id = NB_STRUCT_POINTER;
-        ptr_desc.ext = 0;
         ptr_desc.scroll_y = 0;
         ptr_desc.x = ctx->ms_pos_x;
         ptr_desc.y = ctx->ms_pos_y;
         ptr_desc.interact = ctx->ms_left_button_down;
 
-        res = nb_state_set_pointer(&nb_ctx->core_ctx, &ptr_desc);
+        res = nb_state_set_pointer(nb_ctx->core_ctx, &ptr_desc);
         assert(res == NB_OK);
 
         struct nb_viewport_desc view_desc;
-        view_desc.type_id = NB_STRUCT_VIEWPORT;
-        view_desc.ext = 0;
         view_desc.width = ctx->display_width;
         view_desc.height = ctx->display_height;
 
-        res = nb_state_set_viewport(&nb_ctx->core_ctx, &view_desc);
+        res = nb_state_set_viewport(nb_ctx->core_ctx, &view_desc);
         assert(res == NB_OK);
 
         if(!ctx->char_count) {
                 ctx->chars[0] = 0;
         }
-        nb_state_set_text_input(&nb_ctx->core_ctx, ctx->chars);
+        nb_state_set_text_input(nb_ctx->core_ctx, ctx->chars);
         ctx->char_count = 0;
 
-        nb_state_set_dt(&nb_ctx->core_ctx, ctx->dt);
+        nb_state_set_dt(nb_ctx->core_ctx, ctx->dt);
 
         double time = glfwGetTime();
         ctx->dt = (float)(time - ctx->frame_start);

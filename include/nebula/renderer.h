@@ -141,7 +141,7 @@ nb_result
 nbr_frame_submit(
         struct nb_renderer_ctx * ctx,       /* required */
         struct nbi_cmd_buf ** cmd_bufs,     /* optional - null renders nothing */
-        int cmd_buf_count);                 /* optional - 0 renders nothing*/
+        int cmd_buf_count);                 /* 0 renders nothing */
 
 
 /* ----------------------------------------------------------------- Fonts -- */
@@ -282,8 +282,9 @@ nbr_scissor_clear(
 
 
 unsigned int
-nbi_char_valid(struct nbi_font * font, unsigned int cp);
-
+nbi_char_valid(
+        struct nbi_font * font,
+        unsigned int cp);
 
 
 void
@@ -320,7 +321,26 @@ static float NB_COLOR_LIGHT_GRAY[4] = { 0.7f, 0.7f, 0.7f, 1.0f, };
 #include "nebula_font_open_sans.h"
 #include "nebula_font_proggy.h"
 
-#include <stdio.h>
+
+/* ---------------------------------------------- Stdlib / Config / Macros -- */
+/*
+ * Nebula uses stdlib for some things, you can override them here.
+ * Most of these macros are duplicated in core.h, renderer.h, sugar.h
+ */
+
+
+#include <assert.h>
+#define NB_ASSERT(expr) assert(expr)
+
+#include <stdlib.h>
+#define NB_ALLOC(bytes) malloc(bytes)
+#define NB_FREE(addr) free(addr)
+
+#include <string.h>
+#define NB_ZERO_MEM(ptr) do{memset((ptr), 0, sizeof((ptr)[0]));}while(0)
+
+#define NB_ARR_COUNT(ARR) (sizeof((ARR)) / sizeof((ARR)[0]))
+#define NB_ARRAY_DATA(ARR) &ARR[0]
 
 
 /* ----------------------------------------------------------- Text / Font -- */
@@ -622,7 +642,7 @@ nb_render_cmd_create(
         struct nbi_cmd_buf ** out_cmd)
 {
         if(!ctx || !out_cmd) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
@@ -1067,7 +1087,7 @@ nb_get_render_data(
         struct nb_render_data * data)
 {
         if(!ctx || !data) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
@@ -1122,7 +1142,7 @@ nbr_frame_begin(
         struct nb_renderer_ctx * ctx)
 {
         if(!ctx) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
@@ -1151,17 +1171,17 @@ nbr_frame_submit(
 {
         /* validate */
         if(!ctx) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
         if(cmd_buf_count > NB_ARR_COUNT(ctx->submited_cmds)) {
-                NB_ASSERT(0 && "NB_FAIL - To many cmd buffers submitted");
+                NB_ASSERT(!"NB_FAIL - To many cmd buffers submitted");
                 return NB_FAIL;
         }
 
         if(cmd_buf_count > 0 && cmd_bufs == 0) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
@@ -1175,6 +1195,17 @@ nbr_frame_submit(
 
         return NB_OK;
 }
+
+
+/* ---------------------------------------------------------------- Config -- */
+
+
+#undef NB_ASSERT
+#undef NB_ALLOC
+#undef NB_FREE
+#undef NB_ZERO_MEM
+#undef NB_ARR_COUNT
+#undef NB_ARRAY_DATA
 
 
 #endif

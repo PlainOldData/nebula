@@ -7,6 +7,11 @@
 #define NEB_OGL3_IMPL
 #include "nebula_ogl.h"
 
+#include <stdio.h>
+
+
+/* ----------------------------------------------------------- Application -- */
+
 
 struct nb_sugar_ctx nb_sugar_ctx;
 struct nb_glfw_ctx glfw_ctx;
@@ -21,9 +26,12 @@ main() {
         		nbs_frame_begin(&nb_sugar_ctx);
 
         		/* hello world */
-                struct nb_window * vi = 0;
+                const struct nb_window * vi = 0;
 
                 vi = nbs_window_begin(&nb_sugar_ctx, "hello");
+                if(nbs_button(&nb_sugar_ctx, vi, "foo")) {
+                	printf("Clicked\n");
+                }
                 nbs_window_end(&nb_sugar_ctx, vi);
 
 				vi = nbs_window_begin(&nb_sugar_ctx, "world");
