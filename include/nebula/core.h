@@ -28,15 +28,6 @@
 typedef struct nb_core_ctx * nbc_ctx_t;
 
 
-typedef enum nb_text_align {
-        NB_TEXT_ALIGN_LEFT = 0,
-        NB_TEXT_ALIGN_RIGHT = 1,
-        NB_TEXT_ALIGN_CENTER = 2,
-
-        _NB_TEXT_ALIGN_BIT_MASK = 3,
-} nb_text_align;
-
-
 typedef enum _nb_result {
         NB_OK,
         NB_FAIL,

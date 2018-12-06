@@ -16,6 +16,15 @@
 #define NB_TAU 6.2831853071
 
 
+typedef enum nb_text_align {
+        NB_TEXT_ALIGN_LEFT = 0,
+        NB_TEXT_ALIGN_RIGHT = 1,
+        NB_TEXT_ALIGN_CENTER = 2,
+
+        _NB_TEXT_ALIGN_BIT_MASK = 3,
+} nb_text_align;
+
+
 typedef enum nb_render_cmd_type {
         NB_RENDER_CMD_TYPE_TRIANGLES = 0,
         NB_RENDER_CMD_TYPE_LINES = 1,
