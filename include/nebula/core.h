@@ -381,13 +381,13 @@ nbc_collider(
 {
         /* validate params and state */
         if(!ctx || !desc) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
         if(!ctx->frame_open == NB_TRUE) {
                 /* Call this between`nb_frame_begin()` and `nb_frame_begin()` */
-                NB_ASSERT(0 && "NB_CORRUPT_CALL");
+                NB_ASSERT(!"NB_CORRUPT_CALL");
                 return NB_CORRUPT_CALL;
         }
 
@@ -399,7 +399,7 @@ nbc_collider(
 
         /* find insert point */
         if(!capacity) {
-                NB_ASSERT(0 && "NB_FAIL - No capacity in colliders");
+                NB_ASSERT(!"NB_FAIL - No capacity in colliders");
                 return NB_FAIL;
         }
 
@@ -412,7 +412,7 @@ nbc_collider(
 
         /* check if space */
         if(insert_idx > NB_ARR_COUNT(ctx->colliders)) {
-                NB_ASSERT(0 && "NB_FAIL - Out of collider space");
+                NB_ASSERT(!"NB_FAIL - Out of collider space");
                 return NB_FAIL;
         }
 
@@ -421,7 +421,7 @@ nbc_collider(
         int src_i = insert_idx;
 
         if(dst_i > capacity || src_i > dst_i) {
-                NB_ASSERT(0 && "NB_FAIL - Cannot shuffle array");
+                NB_ASSERT(!"NB_FAIL - Cannot shuffle array");
                 return NB_FAIL;
         }
 
@@ -475,7 +475,7 @@ nb_state_set_pointer(
         struct nb_pointer_desc *desc)
 {
         if(!desc || !ctx) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
@@ -525,7 +525,7 @@ nb_state_set_viewport(
 {
         /* validate */
         if(!desc || !ctx) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
@@ -565,7 +565,7 @@ nb_state_get(
         struct nb_state *out_state)
 {
         if(!ctx || !out_state) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
@@ -590,66 +590,18 @@ nb_result
 nb_frame_begin(
         nbc_ctx_t ctx)
 {
+        if(!ctx) {
+                NB_ASSERT(!"NB_INVALID_PARAMS");
+                return NB_INVALID_PARAMS;
+        }
+
+        if(ctx->frame_open == NB_TRUE) {
+                /* Was `nb_frame_submit()` last frame? */
+                NB_ASSERT(!"NB_CORRUPT_CALL");
+                return NB_CORRUPT_CALL;
+        }
+
         ctx->frame_open = NB_TRUE;
-        // if(!ctx) {
-        //         NB_ASSERT(0 && "NB_INVALID_PARAMS");
-        //         return NB_INVALID_PARAMS;
-        // }
-
-        // struct nbi_state *st = &ctx->state;
-
-        // if(st->ptr_state != NBI_PTR_DOWN) {
-        //         st->ptr_view = 0;
-        //         st->ptr_ele = 0;
-        // }
-
-        // struct nb_buffer *old_next = ctx->view_data.cached_e_next;
-        // struct nb_buffer *old_last = ctx->view_data.cached_e_last;
-
-        // nbi_buffer_clear(old_last);
-
-        // ctx->view_data.cached_e_next = old_last;
-        // ctx->view_data.cached_e_last = old_next;
-
-        // if(st->focus_ele) {
-        //         struct nb_element * focus_ele = nbi_find_element_by_hash(ctx->view_data.cached_e_last, st->focus_ele);
-        //         if(focus_ele) {
-        //                 st->focus_time++;
-        //         }
-        //         else {
-        //                 st->focus_ele = 0;
-        //         }
-        // }
-
-        // /* interaction */
-        // if(st->ptr_view == 0) {
-        //         nbi_frame_interaction(ctx);
-        // }
-
-        // ctx->state.text_cursor_time += ctx->state.dt;
-
-        // /* DEBUG!! */
-        // if(ctx->debug_font_next) {
-        //         ctx->font = ctx->debug_font_next;
-        //         ctx->debug_font_next = 0;
-        // }
-
-        // ctx->vtx_buf.v_count = 0;
-        // ctx->vtx_buf.i_count = 0;
-
-        /* clear cmds */
-        // struct nb_buffer *buf = &ctx->view_data.cached_v;
-        // struct nb_view *view = nbi_buffer_mem(buf);
-
-        // unsigned int stride = sizeof(*view);
-        // unsigned int count = nbi_buffer_used(buf) / stride;
-        // unsigned int i;
-
-        // for(i = 0; i < count; ++i) {
-        //         view[i].cmds->cmd_count = 0;
-        // }
-
-        // ctx->tick += 1;
 
         return NB_OK;
 }
@@ -660,13 +612,13 @@ nb_frame_submit(
         nbc_ctx_t ctx)
 {
         if(!ctx) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
         if(ctx->frame_open == NB_FALSE) {
                 /* Was `nb_frame_begin()` called */
-                NB_ASSERT(0 && "NB_CORRUPT_CALL");
+                NB_ASSERT(!"NB_CORRUPT_CALL");
                 return NB_CORRUPT_CALL;
         }
 
@@ -741,7 +693,7 @@ nb_rect_contains(
 struct nb_color
 nb_color_from_int(uint32_t hex) {
         struct nb_color color;
-        NB_ASSERT(0 && "NO IMPL");
+        NB_ASSERT(!"NO IMPL");
         return color;
 }
 
@@ -755,7 +707,7 @@ nbc_ctx_create(
         nbc_ctx_t *ctx)
 {
         if(!ctx) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
@@ -763,7 +715,7 @@ nbc_ctx_create(
         new_ctx = (struct nb_core_ctx*)NB_ALLOC(sizeof(*new_ctx));
 
         if(!new_ctx) {
-                NB_ASSERT(0 && "NB_FAIL - failed to allocate memory");
+                NB_ASSERT(!"NB_FAIL - failed to allocate memory");
                 return NB_FAIL;
         }
 
@@ -779,7 +731,7 @@ nbc_ctx_destroy(
         nbc_ctx_t *ctx)
 {
         if(!ctx) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
