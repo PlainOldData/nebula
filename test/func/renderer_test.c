@@ -34,13 +34,13 @@ main() {
                 /* hello world */
                 const struct nb_window * vi = 0;
 
-                vi = nbs_window_begin(&nb_sugar_ctx, "hello");
+                vi = nbs_window_begin(&nb_sugar_ctx, "hello", 0xFF0000FF);
                 if(nbs_button(&nb_sugar_ctx, vi, "foo")) {
                         printf("Clicked\n");
                 }
                 nbs_window_end(&nb_sugar_ctx, vi);
 
-                vi = nbs_window_begin(&nb_sugar_ctx, "world");
+                vi = nbs_window_begin(&nb_sugar_ctx, "world", 0x0000FFFF);
                 nbs_window_end(&nb_sugar_ctx, vi);
 
                 nbs_frame_submit(&nb_sugar_ctx);
