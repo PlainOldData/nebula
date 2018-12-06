@@ -112,6 +112,8 @@ struct nbi_cmd_buf {
         unsigned int cmd_count;
 };
 
+typedef struct nb_renderer_ctx * nbr_ctx_t;
+
 struct nb_renderer_ctx {
         struct nbi_font fonts[NB_FONT_COUNT_MAX];
         unsigned int font_count;

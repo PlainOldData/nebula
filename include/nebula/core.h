@@ -659,8 +659,14 @@ nb_frame_submit(
 
 
 struct nb_rect
-nb_rect_from_point_size(int x, int y, int w, int h) {
+nb_rect_from_point_size(
+        int x,
+        int y,
+        int w,
+        int h)
+{
         struct nb_rect rect;
+
         rect.x = x; rect.y = y;
         rect.w = w; rect.h = h;
 
@@ -691,7 +697,9 @@ nb_rect_contains(
 
 
 struct nb_color
-nb_color_from_int(uint32_t hex) {
+nb_color_from_int(
+        uint32_t hex)
+{
         struct nb_color color;
         
         uint8_t c0 = (hex >> 24) & 0xFF;
@@ -714,10 +722,8 @@ struct nb_color
 nb_color_from_float_arr(float *arr) {
         struct nb_color color;
 
-        color.r = arr[0];
-        color.g = arr[1];
-        color.b = arr[2];
-        color.a = arr[3];
+        color.r = arr[0]; color.g = arr[1];
+        color.b = arr[2]; color.a = arr[3];
 
         return color;
 };

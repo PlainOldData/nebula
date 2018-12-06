@@ -35,6 +35,21 @@ nbs_init(
         struct nb_sugar_ctx * ctx);         /* required */
 
 
+
+/*
+ *  returns `NB_OK` on success
+ *  returns `NB_FAIL` if an internal error occured
+ */
+nb_result
+nbs_ctx_get_ctx(
+        struct nb_sugar_ctx * ctx,          /* required */
+        nbc_ctx_t *out_nbc_ctx,             /* optional */
+        nbr_ctx_t *out_nbr_ctx);            /* optional */
+
+
+/* ----------------------------------------------------------------- Frame -- */
+
+
 /*
  *  returns `NB_OK` on success
  *  returns `NB_INVALID_PARAMS` if ctx is null
@@ -42,7 +57,7 @@ nbs_init(
  */
 nb_result
 nbs_frame_begin(
-        struct nb_sugar_ctx *ctx);          /* required */
+        struct nb_sugar_ctx * ctx);         /* required */
 
 
 /*
@@ -52,7 +67,7 @@ nbs_frame_begin(
  */
 nb_result
 nbs_frame_submit(
-        struct nb_sugar_ctx *ctx);          /* required */
+        struct nb_sugar_ctx * ctx);         /* required */
 
 
 /* -------------------------------------------------------- Window widgets -- */
@@ -60,25 +75,22 @@ nbs_frame_submit(
 
 const struct nb_window *
 nbs_window_begin(
-        struct nb_sugar_ctx *ctx,           /* required */
-        const char *name);                  /* required */
+        struct nb_sugar_ctx * ctx,          /* required */
+        const char * name);                 /* required */
 
 
 void
 nbs_window_end(
-        struct nb_sugar_ctx *ctx,           /* required */
-        const struct nb_window *win);       /* required */
+        struct nb_sugar_ctx * ctx,          /* required */
+        const struct nb_window * win);      /* required */
 
 
 /* returns 1 on click, 0 otherwise */
 int
 nbs_button(
-        struct nb_sugar_ctx *ctx,           /* required */
-        const struct nb_window *win,        /* required */
-        const char *name);                  /* required */
-
-
-/* --------------------------------------------------------- Other widgets -- */
+        struct nb_sugar_ctx * ctx,          /* required */
+        const struct nb_window * win,       /* required */
+        const char * name);                 /* required */
 
 
 #endif
@@ -405,6 +417,9 @@ nbs_frame_submit(
 }
 
 
+/* -------------------------------------------------------------- Lifetime -- */
+
+
 nb_result
 nbs_init(
         struct nb_sugar_ctx * ctx)
@@ -443,6 +458,29 @@ nbs_init(
         }
 
         ctx->rdr_ctx.font = ctx->rdr_ctx.fonts;
+
+        return NB_OK;
+}
+        
+
+nb_result
+nbs_ctx_get_ctx(
+        struct nb_sugar_ctx * ctx,
+        nbc_ctx_t *out_nbc_ctx,
+        nbr_ctx_t *out_nbr_ctx)
+{
+        if(!ctx) {
+                NB_ASSERT(!"NB_INVALID_PARAMS");
+                return NB_INVALID_PARAMS;
+        }
+
+        if(out_nbc_ctx) {
+                *out_nbc_ctx = ctx->core_ctx;
+        }
+
+        if(out_nbr_ctx) {
+                *out_nbr_ctx = &ctx->rdr_ctx;
+        }
 
         return NB_OK;
 }
