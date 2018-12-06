@@ -195,7 +195,7 @@ nbs_window_begin(
         uint64_t hash_key = nbi_hash_str(name);
         struct nb_window *window = 0;
         int win_idx = 0;
-        
+
         nb_bool found = nbi_window_search(
                 ctx->windows,
                 NB_ARR_COUNT(ctx->windows),
@@ -226,24 +226,14 @@ nbs_window_begin(
         nbc_collider(ctx->core_ctx, &coll_desc, &inter);
 
         /* render */
-        float recti[4];
-        recti[0] = window->rect.x;
-        recti[1] = window->rect.y;
-        recti[2] = window->rect.w;
-        recti[3] = window->rect.h;
-
-        float color[4];
-        color[0] = 1.f;
-        color[1] = 0.f;
-        color[2] = 0.f;
-        color[3] = 1.f;
+        struct nb_color color = nb_color_from_int(0xFF0000FF);
 
         if(inter.flags & NB_INTERACT_HOVER) {
-                color[1] = 1.f;
+                color.g = 1.f;
         }
 
         if(inter.flags & NB_INTERACT_DRAGGED) {
-                color[2] = 1.f;
+                color.b = 1.f;
                 window->rect.x += inter.delta_x;
                 window->rect.y += inter.delta_y;
 
@@ -264,12 +254,10 @@ nbs_window_begin(
         }
 
         if(inter.flags & NB_INTERACT_CLICKED) {
-                color[0] = 1.f;
-                color[1] = 1.f;
-                color[2] = 1.f;
+                color = nb_color_from_int(0xFFFFFFFF);
         }
 
-        nbr_box(&ctx->rdr_ctx, window->cmd_buf, recti, color, 1.f);
+        nbr_box(&ctx->rdr_ctx, window->cmd_buf, window->rect, color, 1.f);
         ctx->rdr_ctx.cmds_count += 1;
 
         return window;
@@ -298,20 +286,11 @@ nbs_button(
         }
 
         uint64_t hash_key = nbi_hash_str(name);
-        
-        float recti[4];
-        recti[0] = 10;
-        recti[1] = 10;
-        recti[2] = 70;
-        recti[3] = 30;
+       
+        struct nb_rect rect = nb_rect_from_point_size(10, 10, 70, 30);
+        struct nb_color color = nb_color_from_int(0xFFFFFFFF);
 
-        float color[4];
-        color[0] = 1.f;
-        color[1] = 1.f;
-        color[2] = 1.f;
-        color[3] = 1.f;
-
-        nbr_box(&ctx->rdr_ctx, win->cmd_buf, recti, color, 1.f);
+        nbr_box(&ctx->rdr_ctx, win->cmd_buf, rect, color, 1.f);
 
         return 0;
 }

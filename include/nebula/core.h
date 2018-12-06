@@ -87,7 +87,15 @@ struct nb_color {
  */
 struct nb_color
 nb_color_from_int(
-        uint32_t hex);                      /* hex in format 0xRRGGBBAA, eg 0x00FF00FF is full green.
+        uint32_t hex);                      /* hex in format 0xRRGGBBAA, eg 0x00FF00FF is full green. */
+
+
+/*
+ * returns a color, constructed by an array of 4 floats, in the order rgba.
+ */
+struct nb_color
+nb_color_from_float_arr(
+        float *arr);                        /* required - must be float[4] */
 
 
 /* -------------------------------------------------------------- Lifetime -- */
@@ -298,6 +306,7 @@ nb_state_get(
 #define NB_ARRAY_DATA(ARR) &ARR[0]
 
 #define NB_COLLIDER_MAX 512
+
 
 /* ------------------------------------------------- Internal Common Types -- */
 
@@ -684,9 +693,34 @@ nb_rect_contains(
 struct nb_color
 nb_color_from_int(uint32_t hex) {
         struct nb_color color;
-        NB_ASSERT(!"NO IMPL");
+        
+        uint8_t c0 = (hex >> 24) & 0xFF;
+        color.r = (float)(c0) / 255.f;
+        
+        uint8_t c1 = (hex >> 16) & 0xFF;
+        color.g = (float)(c1) / 255.f;
+        
+        uint8_t c2 = (hex >> 8) & 0xFF;
+        color.b = (float)(c2) / 255.f;
+        
+        uint8_t c3 = (hex >> 0) & 0xFF;
+        color.a = (float)(c3) / 255.f;
+        
         return color;
 }
+
+
+struct nb_color
+nb_color_from_float_arr(float *arr) {
+        struct nb_color color;
+
+        color.r = arr[0];
+        color.g = arr[1];
+        color.b = arr[2];
+        color.a = arr[3];
+
+        return color;
+};
 
 
 
