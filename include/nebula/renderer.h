@@ -228,8 +228,8 @@ void
 nbr_box(
         struct nb_renderer_ctx *ctx,        /* required */
         struct nbi_cmd_buf * buf,           /* required */
-        float * rect,                       /* required float[4] */
-        float * color,                      /* required float[4] */
+        struct nb_rect rect,
+        struct nb_color color,
         float radius);
 
 
@@ -694,10 +694,18 @@ void
 nbr_box(
         struct nb_renderer_ctx * ctx,
         struct nbi_cmd_buf * buf,
-        float * rect,
-        float * color,
+        struct nb_rect rec,
+        struct nb_color col,
         float radius)
 {
+        float rect[4];
+        rect[0] = (float)rec.x; rect[1] = (float)rec.y;
+        rect[2] = (float)rec.w; rect[3] = (float)rec.h;
+
+        float color[4];
+        color[0] = col.r; color[1] = col.g;
+        color[2] = col.b; color[3] = col.a;
+
         struct nbi_vtx_buf * data = &ctx->vtx_buf;
 
         int prim = NB_RENDER_CMD_TYPE_TRIANGLES;

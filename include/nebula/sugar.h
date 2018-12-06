@@ -25,17 +25,32 @@ struct nb_sugar_ctx {
 /* -------------------------------------------------------------- Lifetime -- */
 
 
-int
+/*
+ *  returns `NB_OK` on success
+ *  returns `NB_INVALID_PARAMS` if ctx is null
+ *  returns `NB_FAIL` if an internal error occured
+ */
+nb_result
 nbs_init(
         struct nb_sugar_ctx * ctx);         /* required */
 
 
-int
+/*
+ *  returns `NB_OK` on success
+ *  returns `NB_INVALID_PARAMS` if ctx is null
+ *  returns `NB_FAIL` if an internal error occured
+ */
+nb_result
 nbs_frame_begin(
         struct nb_sugar_ctx *ctx);          /* required */
 
 
-int
+/*
+ *  returns `NB_OK` on success
+ *  returns `NB_INVALID_PARAMS` if ctx is null
+ *  returns `NB_FAIL` if an internal error occured
+ */
+nb_result
 nbs_frame_submit(
         struct nb_sugar_ctx *ctx);          /* required */
 
@@ -141,7 +156,7 @@ nbi_window_search(
 {
         /* validate */
         if(!window_array || !arr_count || !hash_key) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_FALSE;
         }
 
@@ -176,7 +191,7 @@ nbi_window_search(
                 }
         }
 
-        NB_ASSERT(0 && "NB_FAIL - Window buffer too small");
+        NB_ASSERT(!"NB_FAIL - Window buffer too small");
         return NB_FALSE;
 }
 
@@ -186,8 +201,9 @@ nbs_window_begin(
         struct nb_sugar_ctx *ctx,
         const char *name)
 {
+        /* validate */
         if(!ctx || !name) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return 0;
         }
 
@@ -204,14 +220,14 @@ nbs_window_begin(
                 &win_idx);
 
         if(found == NB_FALSE) {
-                NB_ASSERT(0 && "NB_FAIL - Failed to get a window");
+                NB_ASSERT(!"NB_FAIL - Failed to get a window");
                 return 0;
         }
 
         nb_result ok = nb_render_cmd_create(&ctx->rdr_ctx, &window->cmd_buf);
 
         if(ok != NB_OK) {
-                NB_ASSERT(0 && "NB_FAIL - Failed creating rdr cmd buffer");
+                NB_ASSERT(!"NB_FAIL - Failed creating rdr cmd buffer");
                 return 0;
         }
 
@@ -226,24 +242,14 @@ nbs_window_begin(
         nbc_collider(ctx->core_ctx, &coll_desc, &inter);
 
         /* render */
-        float recti[4];
-        recti[0] = (float)window->rect.x;
-        recti[1] = (float)window->rect.y;
-        recti[2] = (float)window->rect.w;
-        recti[3] = (float)window->rect.h;
-
-        float color[4];
-        color[0] = 1.f;
-        color[1] = 0.f;
-        color[2] = 0.f;
-        color[3] = 1.f;
+        struct nb_color color = nb_color_from_int(0xFF0000FF);
 
         if(inter.flags & NB_INTERACT_HOVER) {
-                color[1] = 1.f;
+                color.g = 1.f;
         }
 
         if(inter.flags & NB_INTERACT_DRAGGED) {
-                color[2] = 1.f;
+                color.b = 1.f;
                 window->rect.x += (int)inter.delta_x;
                 window->rect.y += (int)inter.delta_y;
 
@@ -264,12 +270,10 @@ nbs_window_begin(
         }
 
         if(inter.flags & NB_INTERACT_CLICKED) {
-                color[0] = 1.f;
-                color[1] = 1.f;
-                color[2] = 1.f;
+                color = nb_color_from_int(0xFFFFFFFF);
         }
 
-        nbr_box(&ctx->rdr_ctx, window->cmd_buf, recti, color, 1.f);
+        nbr_box(&ctx->rdr_ctx, window->cmd_buf, window->rect, color, 1.f);
         ctx->rdr_ctx.cmds_count += 1;
 
         return window;
@@ -293,25 +297,16 @@ nbs_button(
         const char *name)
 {
         if(!ctx || !win || !name || strlen(name) == 0) {
-                NB_ASSERT(0 && "NB_INVALID_PARAMS");
+                NB_ASSERT(!"NB_INVALID_PARAMS");
                 return 0;
         }
 
         uint64_t hash_key = nbi_hash_str(name);
 
-        float recti[4];
-        recti[0] = 10;
-        recti[1] = 10;
-        recti[2] = 70;
-        recti[3] = 30;
+        struct nb_rect rect = nb_rect_from_point_size(10, 10, 70, 30);
+        struct nb_color color = nb_color_from_int(0xFFFFFFFF);
 
-        float color[4];
-        color[0] = 1.f;
-        color[1] = 1.f;
-        color[2] = 1.f;
-        color[3] = 1.f;
-
-        nbr_box(&ctx->rdr_ctx, win->cmd_buf, recti, color, 1.f);
+        nbr_box(&ctx->rdr_ctx, win->cmd_buf, rect, color, 1.f);
 
         return 0;
 }
@@ -327,22 +322,55 @@ nbs_button(
 /* -------------------------------------------------------------- Lifetime -- */
 
 
-int
+nb_result
 nbs_frame_begin(
         struct nb_sugar_ctx *ctx)
 {
-        nb_frame_begin(ctx->core_ctx);
-        nbr_frame_begin(&ctx->rdr_ctx);
-        return 0;
+        if(!ctx) {
+                NB_ASSERT(!"NB_INVALID_PARAMS");
+                return NB_INVALID_PARAMS;
+        }
+
+        nb_result ok = NB_OK;
+
+        /* core */
+        ok = nb_frame_begin(ctx->core_ctx);
+
+        if(ok != NB_OK) {
+                NB_ASSERT(!"NB_FAIL - Failed to start core frame");
+                return NB_FAIL;
+        };
+
+        /* renderer */
+        ok = nbr_frame_begin(&ctx->rdr_ctx);
+
+        if(ok != NB_OK) {
+                NB_ASSERT(!"NB_FAIL - Failed to start renderer frame");
+                return NB_FAIL;
+        }
+
+        return NB_OK;
 }
 
 
-int
+nb_result
 nbs_frame_submit(
         struct nb_sugar_ctx *ctx)
 {
+        if(!ctx) {
+                NB_ASSERT(!"NB_INVALID_PARAMS");
+                return NB_INVALID_PARAMS;
+        }
+
+        nb_result ok = NB_OK;
+
         /* core frame */
-        nb_frame_submit(ctx->core_ctx);
+        ok = nb_frame_submit(ctx->core_ctx);
+
+        if(ok != NB_OK) {
+                NB_ASSERT(!"NB_FAIL - Failed to submit core frame");
+                return NB_FAIL;
+        }
 
         /* renderer frame */
         struct nbi_cmd_buf *cmds[32];
@@ -363,34 +391,34 @@ nbs_frame_submit(
                 }
         }
 
-        nbr_frame_submit(
+        ok = nbr_frame_submit(
                 &ctx->rdr_ctx,
                 &cmds[0],
                 cmd_count);
 
-        return 0;
+        if(ok != NB_OK) {
+                NB_ASSERT(!"NB_FAIL - Failed to submit renderer frame");
+                return NB_FAIL;
+        }
+
+        return NB_OK;
 }
 
 
-int
+nb_result
 nbs_init(
         struct nb_sugar_ctx * ctx)
 {
+        if(!ctx) {
+                NB_ASSERT(!"NB_INVALID_PARAMS");
+                return NB_INVALID_PARAMS;
+        }
+
         NB_ZERO_MEM(ctx);
 
         ctx->core_ctx = 0;
         nbc_ctx_create(&ctx->core_ctx);
         NB_ASSERT(ctx->core_ctx);
-
-        // if(!desc || !new_ctx) {
-        //         NB_ASSERT(0 && "NB_INVALID_PARAMS");
-        //         return NB_INVALID_PARAMS;
-        // }
-
-        // if(desc->type_id != NB_STRUCT_CTX_CREATE) {
-        //         NB_ASSERT(0 && "NB_INVALID_DESC");
-        //         return NB_INVALID_DESC;
-        // }
 
         ctx->rdr_ctx.vtx_buf = (struct nbi_vtx_buf) {
                 .v = NB_ALLOC(65536 * sizeof(float)),
