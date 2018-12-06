@@ -221,7 +221,7 @@ nbgl_render(
         glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
 
         glEnable(GL_SCISSOR_TEST);
-        glEnable(GL_DEPTH_TEST);
+        // glEnable(GL_DEPTH_TEST);
 
         /* render */
         unsigned int list_idx, i;

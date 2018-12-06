@@ -61,7 +61,8 @@ nbs_frame_submit(
 const struct nb_window *
 nbs_window_begin(
         struct nb_sugar_ctx *ctx,           /* required */
-        const char *name);                  /* required */
+        const char *name,                   /* required */
+        unsigned int color_hex);
 
 
 void
@@ -199,7 +200,8 @@ nbi_window_search(
 const struct nb_window *
 nbs_window_begin(
         struct nb_sugar_ctx *ctx,
-        const char *name)
+        const char *name,
+        unsigned int color_hex)
 {
         /* validate */
         if(!ctx || !name) {
@@ -242,7 +244,8 @@ nbs_window_begin(
         nbc_collider(ctx->core_ctx, &coll_desc, &inter);
 
         /* render */
-        struct nb_color color = nb_color_from_int(0xFF0000FF);
+        /*struct nb_color color = nb_color_from_int(0xFF0000FF);*/
+        struct nb_color color = nb_color_from_int(color_hex);
 
         if(inter.flags & NB_INTERACT_HOVER) {
                 color.g = 1.f;
@@ -273,7 +276,7 @@ nbs_window_begin(
                 color = nb_color_from_int(0xFFFFFFFF);
         }
 
-        nbr_box(&ctx->rdr_ctx, window->cmd_buf, window->rect, color, 1.f);
+        nbr_box(&ctx->rdr_ctx, window->cmd_buf, window->rect, color, 4.0f);
         ctx->rdr_ctx.cmds_count += 1;
 
         return window;
@@ -304,9 +307,14 @@ nbs_button(
         uint64_t hash_key = nbi_hash_str(name);
 
         struct nb_rect rect = nb_rect_from_point_size(10, 10, 70, 30);
-        struct nb_color color = nb_color_from_int(0xFFFFFFFF);
+        struct nb_color color = nb_color_from_int(0xFF00FFFF);
 
-        nbr_box(&ctx->rdr_ctx, win->cmd_buf, rect, color, 1.f);
+        nbr_box(&ctx->rdr_ctx, win->cmd_buf, rect, color, 8.0f);
+
+        /* TEMP!! */
+        float text_rect[4] = { (float)rect.x + 5.0f, (float)rect.y + 15.0f, (float)rect.w, (float)rect.h, };
+        struct nb_color text_color = nb_color_from_int(0xFFFFFFFF);
+        nbr_text(&ctx->rdr_ctx, win->cmd_buf, text_rect, 0, (float *)&text_color, "HELLO");
 
         return 0;
 }
@@ -352,7 +360,6 @@ nbs_frame_begin(
         return NB_OK;
 }
 
-
 nb_result
 nbs_frame_submit(
         struct nb_sugar_ctx *ctx)
@@ -380,9 +387,9 @@ nbs_frame_submit(
         int i;
 
         /* build array of cmds */
-        for(i = 0; i < win_count; ++i) {
+        for(i = win_count - 1; i >= 0; --i) {
                 if(ctx->windows[i].unique_id > 0) {
-                        cmds[i] = ctx->windows[i].cmd_buf;
+                        cmds[cmd_count] = ctx->windows[i].cmd_buf;
                         cmd_count += 1;
 
                         if(cmd_count >= NB_ARR_COUNT(cmds)) {
