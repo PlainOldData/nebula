@@ -149,7 +149,7 @@ nb_frame_submit(
 /*
  * Adds a collider to the environment, if a collider has hit the pointer,
  *
- * Note: you must only add a collider between `nb_frame_begin()` and 
+ * Note: you must only add a collider between `nb_frame_begin()` and
  * `nb_frame_submit()`
  */
 
@@ -336,7 +336,7 @@ struct nbi_state {
 
 
 struct nbi_collider {
-        unsigned long unique_id;
+        uint64_t unique_id;
         int index;
         struct nb_rect rect;
 };
@@ -354,7 +354,7 @@ struct nb_core_ctx {
 
         /* interacting */
         int inter_idx;
-        unsigned long inter_id;
+        uint64_t inter_id;
 
         /* frame open */
         int frame_open;
@@ -447,11 +447,11 @@ nbc_collider(
 
                 if(ctx->state.ptr_state == NBI_PTR_DOWN) {
                         out_inter->flags |= NB_INTERACT_DRAGGED;
-                        out_inter->delta_x = ctx->state.ptr_delta[0];
-                        out_inter->delta_y = ctx->state.ptr_delta[1];
+                        out_inter->delta_x = (float)ctx->state.ptr_delta[0];
+                        out_inter->delta_y = (float)ctx->state.ptr_delta[1];
                 }
         }
-        
+
 
         return NB_OK;
 }

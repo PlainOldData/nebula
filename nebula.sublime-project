@@ -1,0 +1,24 @@
+{
+        "build_systems":
+        [
+                {
+                        "file_regex": "(src.+?(?=[:(])).([0-9]+).+?error",
+                        "name": "Nebula",
+                        "shell_cmd": "cd test/func && nebr_glfw_gl.bat",
+                        "variants":
+                        [
+                                {
+                                        "name": "Run",
+                                        "shell_cmd": "\"bin/nebr_glfw_gl.exe\""
+                                }
+                        ],
+                        "working_dir": "$project_path"
+                }
+        ],
+
+        "settings": {
+                "tab_size": 8,
+                "translate_tabs_to_spaces": true,
+                "detect_indentation": false
+        }
+}

@@ -195,7 +195,7 @@ nbs_window_begin(
         uint64_t hash_key = nbi_hash_str(name);
         struct nb_window *window = 0;
         int win_idx = 0;
-        
+
         nb_bool found = nbi_window_search(
                 ctx->windows,
                 NB_ARR_COUNT(ctx->windows),
@@ -227,10 +227,10 @@ nbs_window_begin(
 
         /* render */
         float recti[4];
-        recti[0] = window->rect.x;
-        recti[1] = window->rect.y;
-        recti[2] = window->rect.w;
-        recti[3] = window->rect.h;
+        recti[0] = (float)window->rect.x;
+        recti[1] = (float)window->rect.y;
+        recti[2] = (float)window->rect.w;
+        recti[3] = (float)window->rect.h;
 
         float color[4];
         color[0] = 1.f;
@@ -244,8 +244,8 @@ nbs_window_begin(
 
         if(inter.flags & NB_INTERACT_DRAGGED) {
                 color[2] = 1.f;
-                window->rect.x += inter.delta_x;
-                window->rect.y += inter.delta_y;
+                window->rect.x += (int)inter.delta_x;
+                window->rect.y += (int)inter.delta_y;
 
                 /* re-order cache if a background window was dragged */
                 if(win_idx > 0) {
@@ -298,7 +298,7 @@ nbs_button(
         }
 
         uint64_t hash_key = nbi_hash_str(name);
-        
+
         float recti[4];
         recti[0] = 10;
         recti[1] = 10;
