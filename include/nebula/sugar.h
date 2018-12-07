@@ -14,11 +14,47 @@ struct nb_window {
 };
 
 
+struct nb_node;
+
+
+struct nb_node_input {
+        char type[16];
+        char name[16];
+
+        int node_idx;
+
+};
+
+
+struct nb_node_output {
+        char type[16];
+        char name[16];
+
+        struct nb_node_input *inputs[8];
+};
+
+
+struct nb_node {
+        uint64_t unique_id;
+        struct nb_rect rect;
+
+        struct nb_node_input inputs[8];
+        struct nb_node_output outputs[8];
+};
+
+
+struct nb_node nodes[32];
+struct nbi_cmd_buf *node_cmd_buffers[32];
+struct nbi_cmd_buf bez_cmd_buf;
+
+
 struct nb_sugar_ctx {
         struct nb_renderer_ctx rdr_ctx;
         nbc_ctx_t core_ctx;
 
         struct nb_window windows[32];
+
+        struct nb_node nodes[512];
 };
 
 
@@ -33,7 +69,6 @@ struct nb_sugar_ctx {
 nb_result
 nbs_init(
         struct nb_sugar_ctx * ctx);         /* required */
-
 
 
 /*
