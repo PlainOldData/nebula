@@ -6,6 +6,9 @@
 #include <nebula/renderer.h>
 
 
+typedef struct nbs_ctx * nbs_ctx_t;
+
+
 struct nb_window {
         uint64_t unique_id;
         struct nb_rect rect;
@@ -59,6 +62,16 @@ struct nb_sugar_ctx {
 
 
 /* -------------------------------------------------------------- Lifetime -- */
+
+
+static nb_result
+nbs_ctx_create(
+        struct nbs_ctx * ctx) { return NB_OK; }
+
+
+static nb_result
+nbs_ctx_destroy(
+        struct nbs_ctx * ctx) { return NB_OK; }
 
 
 /*
@@ -144,12 +157,7 @@ nbs_button(
 #include "nebula_font_proggy.h"
 #include "nebula_font_awesome.h"
 
-
-#define NEB_CORE_IMPL
 #include <nebula/core.h>
-
-
-#define NEB_RENDERER_IMPL
 #include <nebula/renderer.h>
 
 

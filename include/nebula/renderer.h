@@ -4,7 +4,6 @@
 
 #include <nebula/core.h>
 
-#define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 
 #include "nebula_font_open_sans.h"
@@ -132,6 +131,13 @@ struct nb_renderer_ctx {
 
 /* -------------------------------------------------------------- Lifetime -- */
 
+
+static nb_result
+nbr_ctx_create(struct nbr_ctx *c) { return NB_OK; }
+
+
+static nb_result
+nbr_ctx_destroy(struct nbr_ctx *c) { return NB_OK; }
 
 /*
  * return NB_OK if the new frame has started
@@ -331,6 +337,9 @@ static float NB_COLOR_LIGHT_GRAY[4] = { 0.7f, 0.7f, 0.7f, 1.0f, };
 #include "nebula_font_awesome.h"
 #include "nebula_font_open_sans.h"
 #include "nebula_font_proggy.h"
+
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_truetype.h"
 
 
 /* ---------------------------------------------- Stdlib / Config / Macros -- */
