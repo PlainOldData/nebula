@@ -132,12 +132,14 @@ struct nb_renderer_ctx {
 /* -------------------------------------------------------------- Lifetime -- */
 
 
-static nb_result
-nbr_ctx_create(struct nbr_ctx *c) { return NB_OK; }
+nb_result
+nbr_ctx_create(
+        nbr_ctx_t *c);
 
 
-static nb_result
-nbr_ctx_destroy(struct nbr_ctx *c) { return NB_OK; }
+nb_result
+nbr_ctx_destroy(
+        nbr_ctx_t *c);
 
 /*
  * return NB_OK if the new frame has started
@@ -766,6 +768,9 @@ nbr_box(
         nbi_push_round_corner(data, c3, color, seg_count, radius, ang);
 
         nbi_cmd_end(data, cmd);
+
+        /* err */
+        ctx->cmds_count += 1;
 }
 
 
@@ -1163,6 +1168,89 @@ nb_debug_set_font(
 
 
 /* -------------------------------------------------------------- Lifetime -- */
+
+
+nb_result
+nbr_ctx_create(
+        nbr_ctx_t *c)
+{
+        if (!c) {
+                NB_ASSERT(!"NB_INVALID_PARAMS");
+                return NB_INVALID_PARAMS;
+        }
+
+        struct nb_renderer_ctx * new_ctx = NB_ALLOC(sizeof(*new_ctx));
+
+        if (!new_ctx) {
+                NB_ASSERT(!"NB_FAIL");
+                goto CTX_CLEANUP_AND_FAIL;
+        }
+
+        memset(new_ctx, 0, sizeof(*new_ctx));
+
+        new_ctx->vtx_buf.v = NB_ALLOC(65536 * sizeof(float));
+        new_ctx->vtx_buf.i = NB_ALLOC(65536 * sizeof(unsigned short));
+
+        if(!new_ctx->vtx_buf.v || !new_ctx->vtx_buf.i) {
+                NB_ASSERT(!"NB_FAIL");
+                goto CTX_CLEANUP_AND_FAIL;
+        }
+
+        struct nbi_font_info { unsigned char * ttf; float height; };
+        struct nbi_font_info fi[] = {
+                { NB_OPEN_SANS_TTF, 16.0f, },
+                { NB_PROGGY_TTF, 11.0f, },
+        };
+
+        new_ctx->font_count = NB_ARR_COUNT(fi);
+        if(new_ctx->font_count > NB_ARR_COUNT(new_ctx->fonts)) {
+                NB_ASSERT(!"More Fonts that storage, increase size");
+                new_ctx->font_count = NB_ARR_COUNT(new_ctx->fonts);
+        }
+
+        int i;
+        int f_count = new_ctx->font_count;
+
+        for(i = 0; i < f_count; i++) {
+                nbi_font_init(new_ctx->fonts + i, fi[i].ttf, fi[i].height);
+        }
+
+        new_ctx->font = new_ctx->fonts;
+
+        *c = new_ctx;
+
+        return NB_OK;
+
+        /* Failed to create context, most likely allocation failure. */
+        CTX_CLEANUP_AND_FAIL:
+
+        if (new_ctx && new_ctx->vtx_buf.i) {
+                NB_FREE(new_ctx->vtx_buf.i);
+        }
+
+        if (new_ctx && new_ctx->vtx_buf.v) {
+                NB_FREE(new_ctx->vtx_buf.v);
+        }
+
+        if (new_ctx) {
+                NB_FREE(new_ctx);
+        }
+
+        return NB_FAIL;
+}
+
+
+nb_result
+nbr_ctx_destroy(
+        nbr_ctx_t *c)
+{
+        if (!c) {
+                NB_ASSERT(!"NB_INVALID_PARAMS");
+                return NB_INVALID_PARAMS;
+        }
+
+        return NB_FAIL;
+}
 
 
 nb_result

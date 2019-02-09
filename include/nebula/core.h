@@ -128,8 +128,8 @@ nbc_ctx_destroy(
 /* ----------------------------------------------------------------- Frame -- */
 /*
  *  Nebula works on frames, at the start of all nebula commands you must call
- *  `nb_frame_begin()` followed by your nebula commands. Once finished you must
- *  call `nb_frame_submit()` The next frame you will be informed of any
+ *  `nbc_frame_begin()` followed by your nebula commands. Once finished you must
+ *  call `nbc_frame_submit()` The next frame you will be informed of any
  *  interactions the pointer had with colliders.
  */
 
@@ -139,7 +139,7 @@ nbc_ctx_destroy(
  * return NB_FAIL if an internal error occured
  */
 nb_result
-nb_frame_begin(
+nbc_frame_begin(
         nbc_ctx_t ctx);                     /* required */
 
 
@@ -149,7 +149,7 @@ nb_frame_begin(
  * return NB_FAIL if an internal error occured
  */
 nb_result
-nb_frame_submit(
+nbc_frame_submit(
         nbc_ctx_t ctx);                     /* required */
 
 
@@ -157,8 +157,8 @@ nb_frame_submit(
 /*
  * Adds a collider to the environment, if a collider has hit the pointer,
  *
- * Note: you must only add a collider between `nb_frame_begin()` and
- * `nb_frame_submit()`
+ * Note: you must only add a collider between `nbc_frame_begin()` and
+ * `nbc_frame_submit()`
  */
 
 
@@ -186,7 +186,7 @@ struct nb_interaction {
 /*
  * returns NB_OK if the collider was added.
  * returns NB_INVALID_PARAMS if ctx or desc are null.
- * returns NB_CORRUPT_CALL if not called between `nb_frame_begin` and `nb_frame_submit`
+ * returns NB_CORRUPT_CALL if not called between `nbc_frame_begin` and `nbc_frame_submit`
  * returns NB_FAIL if an internal error occured.
  */
 nb_result
@@ -216,7 +216,7 @@ struct nb_pointer_desc {
  * returns `NB_FAIL` if an internal error occured
  */
 nb_result
-nb_state_set_pointer(
+nbc_state_set_pointer(
         nbc_ctx_t ctx,                      /* required */
         struct nb_pointer_desc * desc);     /* required */
 
@@ -233,19 +233,19 @@ struct nb_viewport_desc {
  * returns `NB_FAIL` if an internal error occured
  */
 nb_result
-nb_state_set_viewport(
+nbc_state_set_viewport(
         nbc_ctx_t ctx,                      /* required */
         struct nb_viewport_desc *desc);     /* required */
 
 
 nb_result
-nb_state_set_text_input(
+nbc_state_set_text_input(
         nbc_ctx_t ctx,                      /* required */
         char * text);                       /* optional */
 
 
 nb_result
-nb_state_set_dt(
+nbc_state_set_dt(
         nbc_ctx_t ctx,                      /* required */
         float dt);
 
@@ -269,7 +269,7 @@ struct nb_state {
  * returns `NB_FAIL` if an internal error occured
  */
 nb_result
-nb_state_get(
+nbc_state_get(
         nbc_ctx_t ctx,                      /* required */
         struct nb_state *out_state);        /* required */
 
@@ -386,7 +386,7 @@ nbc_collider(
         }
 
         if(!ctx->frame_open == NB_TRUE) {
-                /* Call this between`nb_frame_begin()` and `nb_frame_begin()` */
+                /* Call this between`nbc_frame_begin()` and `nbc_frame_begin()` */
                 NB_ASSERT(!"NB_CORRUPT_CALL");
                 return NB_CORRUPT_CALL;
         }
@@ -470,7 +470,7 @@ nbc_collider(
 
 
 nb_result
-nb_state_set_pointer(
+nbc_state_set_pointer(
         nbc_ctx_t ctx,
         struct nb_pointer_desc *desc)
 {
@@ -519,7 +519,7 @@ nb_state_set_pointer(
 
 
 nb_result
-nb_state_set_viewport(
+nbc_state_set_viewport(
         nbc_ctx_t ctx,
         struct nb_viewport_desc *desc)
 {
@@ -536,7 +536,7 @@ nb_state_set_viewport(
 }
 
 nb_result
-nb_state_set_text_input(nbc_ctx_t ctx, char * text) {
+nbc_state_set_text_input(nbc_ctx_t ctx, char * text) {
         struct nbi_state *state = &ctx->state;
 
         char * src = text;
@@ -552,7 +552,8 @@ nb_state_set_text_input(nbc_ctx_t ctx, char * text) {
         return NB_OK;
 }
 
-nb_result nb_state_set_dt(nbc_ctx_t ctx, float dt) {
+nb_result
+nbc_state_set_dt(nbc_ctx_t ctx, float dt) {
         NB_ASSERT(ctx);
         ctx->state.dt = dt;
         return NB_OK;
@@ -560,7 +561,7 @@ nb_result nb_state_set_dt(nbc_ctx_t ctx, float dt) {
 
 
 nb_result
-nb_state_get(
+nbc_state_get(
         nbc_ctx_t ctx,
         struct nb_state *out_state)
 {
@@ -586,8 +587,11 @@ nb_state_get(
 }
 
 
+/* ----------------------------------------------------------------- Frame -- */
+
+
 nb_result
-nb_frame_begin(
+nbc_frame_begin(
         nbc_ctx_t ctx)
 {
         if(!ctx) {
@@ -596,7 +600,7 @@ nb_frame_begin(
         }
 
         if(ctx->frame_open == NB_TRUE) {
-                /* Was `nb_frame_submit()` last frame? */
+                /* Was `nbc_frame_submit()` last frame? */
                 NB_ASSERT(!"NB_CORRUPT_CALL");
                 return NB_CORRUPT_CALL;
         }
@@ -608,7 +612,7 @@ nb_frame_begin(
 
 
 nb_result
-nb_frame_submit(
+nbc_frame_submit(
         nbc_ctx_t ctx)
 {
         if(!ctx) {
@@ -617,7 +621,7 @@ nb_frame_submit(
         }
 
         if(ctx->frame_open == NB_FALSE) {
-                /* Was `nb_frame_begin()` called */
+                /* Was `nbc_frame_begin()` called */
                 NB_ASSERT(!"NB_CORRUPT_CALL");
                 return NB_CORRUPT_CALL;
         }
