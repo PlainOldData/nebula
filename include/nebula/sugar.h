@@ -71,7 +71,7 @@ nbs_ctx_create(
  */
 nb_result
 nbs_ctx_destroy(
-        nbs_ctx_t ctx);
+        nbs_ctx_t * ctx);
 
 
 /*
@@ -530,10 +530,19 @@ nbs_ctx_create(
 
 nb_result
 nbs_ctx_destroy(
-        nbs_ctx_t ctx)
+        nbs_ctx_t * ctx)
 {
-        (void)ctx;
-        return NB_FAIL;
+        if (!ctx && !*ctx) {
+                NB_ASSERT(!"NB_INVALID_PARAMS");
+                return NB_INVALID_PARAMS;
+        }
+
+        struct nbs_ctx *kill_ctx = *ctx;
+        NB_FREE(kill_ctx);
+
+        *ctx = 0;
+
+        return NB_OK;
 }
         
 
@@ -555,7 +564,7 @@ nbs_ctx_get_ctx(
         }
 
         if(out_nbr_ctx) {
-                *out_nbr_ctx = &ctx->rdr_ctx;
+                *out_nbr_ctx = ctx->rdr_ctx;
         }
 
         return NB_OK;
