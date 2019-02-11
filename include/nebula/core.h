@@ -628,6 +628,16 @@ nbc_frame_submit(
 
         ctx->frame_open = NB_FALSE;
 
+        /* clear intermitant state */
+        ctx->state.ptr_delta[0] = 0;
+        ctx->state.ptr_delta[1] = 0;
+
+        if(ctx->state.ptr_state == NBI_PTR_DOWN_EVENT) {
+                ctx->state.ptr_state = NBI_PTR_DOWN;
+        } else if(ctx->state.ptr_state == NBI_PTR_UP_EVENT) {
+                ctx->state.ptr_state = NBI_PTR_UP;
+        }
+
         /* bail if the pointer is being dragged */
         if(ctx->state.ptr_state == NBI_PTR_DOWN) {
                 ctx->collider_count = 0;
