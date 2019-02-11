@@ -330,6 +330,13 @@ nbs_window_begin(
                 color = nb_color_from_int(0xFFFFFFFF);
         }
 
+        float rect[4];
+        rect[0] = (float)window->rect.x;
+        rect[1] = (float)window->rect.y;
+        rect[2] = (float)window->rect.w;
+        rect[3] = (float)window->rect.h;
+
+        nbr_scissor_set(window->cmd_buf, rect); 
         nbr_box(ctx->rdr_ctx, window->cmd_buf, window->rect, color, 4.0f);
         
         return window;
@@ -446,7 +453,7 @@ nbs_frame_submit(
                         cmds[cmd_count] = ctx->windows[i].cmd_buf;
                         cmd_count += 1;
 
-                        if(cmd_count >= NB_ARR_COUNT(cmds)) {
+                        if(cmd_count >= (int)NB_ARR_COUNT(cmds)) {
                                 break;
                         }
                 }

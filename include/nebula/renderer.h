@@ -332,10 +332,6 @@ nbi_get_glyph_width(
 #define NEBULA_RENDERER_IMPL_INCLUDED
 
 
-static float NB_COLOR_WHITE[4] = { 1.0f, 1.0f, 1.0f, 1.0f, };
-static float NB_COLOR_DARK_GRAY[4] = { 0.3f, 0.3f, 0.3f, 1.0f, };
-static float NB_COLOR_LIGHT_GRAY[4] = { 0.7f, 0.7f, 0.7f, 1.0f, };
-
 #include "nebula_font_awesome.h"
 #include "nebula_font_open_sans.h"
 #include "nebula_font_proggy.h"
@@ -1291,7 +1287,7 @@ nbr_frame_submit(
                 return NB_INVALID_PARAMS;
         }
 
-        if(cmd_buf_count > NB_ARR_COUNT(ctx->submited_cmds)) {
+        if(cmd_buf_count > (int)NB_ARR_COUNT(ctx->submited_cmds)) {
                 NB_ASSERT(!"NB_FAIL - To many cmd buffers submitted");
                 return NB_FAIL;
         }

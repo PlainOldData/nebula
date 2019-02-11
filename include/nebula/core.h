@@ -385,14 +385,14 @@ nbc_collider(
                 return NB_INVALID_PARAMS;
         }
 
-        if(!ctx->frame_open == NB_TRUE) {
+        if(ctx->frame_open != NB_TRUE) {
                 /* Call this between`nbc_frame_begin()` and `nbc_frame_begin()` */
                 NB_ASSERT(!"NB_CORRUPT_CALL");
                 return NB_CORRUPT_CALL;
         }
 
         int desired_idx = desc->index;
-        int insert_idx = 0;
+        unsigned int insert_idx = 0;
         int count = ctx->collider_count;
         int capacity = NB_ARR_COUNT(ctx->colliders);
         int i;
