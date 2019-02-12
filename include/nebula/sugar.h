@@ -198,6 +198,12 @@ nbi_hash_str(const char *name) {
 }
 
 
+/* ---------------------------------------------------------- Window Style -- */
+
+
+#define NB_THEME_WINDOW_CLICK 0xFFFFFFFF
+
+
 /* -------------------------------------------------------- Window widgets -- */
 
 
@@ -327,7 +333,7 @@ nbs_window_begin(
         }
 
         if(inter.flags & NB_INTERACT_CLICKED) {
-                color = nb_color_from_int(0xFFFFFFFF);
+                color = nb_color_from_int(NB_THEME_WINDOW_CLICK);
         }
 
         float rect[4];
@@ -587,6 +593,8 @@ nbs_ctx_get_ctx(
 #undef NB_ZERO_MEM
 #undef NB_ARR_COUNT
 #undef NB_ARRAY_DATA
+
+#undef NB_THEME_WINDOW_CLICK
 
 
 #endif
