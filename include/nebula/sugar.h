@@ -11,6 +11,7 @@ typedef struct nbs_ctx * nbs_ctx_t;
 
 struct nb_window {
         uint64_t unique_id;
+        int win_idx;
         struct nb_rect rect;
 
         struct nbi_cmd_buf *cmd_buf;
@@ -212,8 +213,7 @@ nbi_window_search(
         struct nb_window *window_array,     /* required */
         int arr_count,                      /* required - greater than zero */
         uint64_t hash_key,                  /* required - greater than zero */
-        struct nb_window ** out_win,        /* required */
-        int * out_idx)                      /* required */
+        struct nb_window ** out_win)        /* required */
 {
         /* validate */
         if(!window_array || !arr_count || !hash_key) {
@@ -225,8 +225,8 @@ nbi_window_search(
         int i;
         for(i = 0; i < arr_count; ++i) {
                 if(window_array[i].unique_id == hash_key) {
-                        *out_idx = i;
                         *out_win = &window_array[i];
+                        (*out_win)->win_idx = i;
 
                         return NB_TRUE;
                 }
@@ -245,8 +245,8 @@ nbi_window_search(
                         window_array[i].rect.w = 100;
                         window_array[i].rect.h = 150;
 
-                        *out_idx = i;
                         *out_win = &window_array[i];
+                        (*out_win)->win_idx = i;
 
                         return NB_TRUE;
                 }
@@ -278,8 +278,7 @@ nbs_window_begin(
                 ctx->windows,
                 NB_ARR_COUNT(ctx->windows),
                 hash_key,
-                &window,
-                &win_idx);
+                &window);
 
         if(found == NB_FALSE) {
                 NB_ASSERT(!"NB_FAIL - Failed to get a window");
@@ -295,7 +294,7 @@ nbs_window_begin(
 
         /* imgui */
         struct nb_collider_desc coll_desc;
-        coll_desc.index = win_idx;
+        coll_desc.index = window->win_idx;
         coll_desc.unique_id = window->unique_id;
         coll_desc.rect = &window->rect;
 
@@ -317,13 +316,13 @@ nbs_window_begin(
                 window->rect.y += (int)inter.delta_y;
 
                 /* re-order cache if a background window was dragged */
-                if(win_idx > 0) {
+                if(window->win_idx > 0) {
                         struct nb_window win_cpy = *window;
                         window->unique_id = 0;
 
                         void *dst = (void*)&ctx->windows[1];
                         void *src = (void*)&ctx->windows[0];
-                        size_t size = sizeof(ctx->windows[0]) * (win_idx);
+                        size_t size = sizeof(ctx->windows[0]) * (window->win_idx);
 
                         memmove(dst, src, size);
 
@@ -370,18 +369,35 @@ nbs_button(
                 return 0;
         }
 
+        /* build some data */
         uint64_t hash_key = nbi_hash_str(name);
-        (void)hash_key;
 
-        struct nb_rect rect = nb_rect_from_point_size(10, 10, 70, 30);
+        struct nb_rect rect = nb_rect_from_point_size(1, 1, 70, 30);
         struct nb_color color = nb_color_from_int(0xFF00FFFF);
 
+        rect.x += win->rect.x;
+        rect.y += win->rect.y;
+        
+        /* collider */
+        struct nb_collider_desc bcoll;
+        bcoll.index = win->win_idx;
+        bcoll.unique_id = hash_key;
+        bcoll.rect = &rect;
+
+        struct nb_interaction inter = {0};
+        nbc_collider(ctx->core_ctx, &bcoll, &inter);
+
+        /* renderable */
         nbr_box(ctx->rdr_ctx, win->cmd_buf, rect, color, 8.0f);
 
         /* TEMP!! */
         float text_rect[4] = { (float)rect.x + 5.0f, (float)rect.y + 15.0f, (float)rect.w, (float)rect.h, };
         struct nb_color text_color = nb_color_from_int(0xFFFFFFFF);
         nbr_text(ctx->rdr_ctx, win->cmd_buf, text_rect, 0, (float *)&text_color, "HELLO");
+  
+        if(inter.flags & NB_INTERACT_CLICKED) {
+                return 1;
+        };
 
         return 0;
 }
