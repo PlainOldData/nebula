@@ -6,6 +6,7 @@
                         "language" : "C",
 
                         "files" : [
+                                "./premake.json",
                                 "./include/**.h",
                                 "./src/**.c"
                         ],
