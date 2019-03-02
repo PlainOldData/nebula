@@ -347,15 +347,26 @@ nbi_get_glyph_width(
  */
 
 
+#ifndef NB_ASSERT
 #include <assert.h>
 #define NB_ASSERT(expr) assert(expr)
+#endif
 
+#ifndef NB_ALLOC
 #include <stdlib.h>
 #define NB_ALLOC(bytes) malloc(bytes)
-#define NB_FREE(addr) free(addr)
+#endif
 
+#ifndef NB_FREE
+#include <stdlib.h>
+#define NB_FREE(addr) free(addr)
+#endif
+
+#ifndef NB_ZERO_MEM
 #include <string.h>
 #define NB_ZERO_MEM(ptr) do{memset((ptr), 0, sizeof((ptr)[0]));}while(0)
+#endif
+
 
 #define NB_ARR_COUNT(ARR) (sizeof((ARR)) / sizeof((ARR)[0]))
 #define NB_ARRAY_DATA(ARR) &ARR[0]

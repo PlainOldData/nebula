@@ -8,3 +8,6 @@
 
 #define NEB_SUGAR_IMPL
 #include <nebula/sugar.h>
+
+#define NEB_OGL3_IMPL
+#include <nebula/backend/ogl3.h>
