@@ -1,5 +1,4 @@
 
-
 #define NEB_CORE_IMPL
 #include <nebula/core.h>
 
