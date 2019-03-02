@@ -3,12 +3,7 @@
 
 
 #include <nebula/core.h>
-
 #include "stb_truetype.h"
-
-#include "nebula_font_open_sans.h"
-#include "nebula_font_proggy.h"
-#include "nebula_font_awesome.h"
 
 
 #define NB_FONT_COUNT_MAX 16
@@ -126,6 +121,8 @@ struct nb_renderer_ctx {
 
         struct nbi_cmd_buf *submited_cmds[256];
         int cmds_submit_count;
+        
+        int width, height;
 };
 
 
@@ -319,6 +316,23 @@ float
 nbi_get_glyph_width(
         struct nbi_font * font,
         unsigned int cp);
+
+
+/* ---------------------------------------------------------- Render State -- */
+
+
+nb_result
+nbr_viewport_set(
+        nbr_ctx_t ctx,
+        int width,
+        int height);
+
+
+nb_result
+nbr_viewport_get(
+        nbr_ctx_t ctx,
+        int *width,
+        int *height);
 
 
 #endif
@@ -1316,6 +1330,48 @@ nbr_frame_submit(
 
         ctx->cmds_submit_count = cmd_buf_count;
 
+        return NB_OK;
+}
+
+
+/* ---------------------------------------------------------- Render State -- */
+
+
+nb_result
+nbr_viewport_set(
+        nbr_ctx_t ctx,
+        int width,
+        int height)
+{
+        if(!ctx) {
+                return NB_INVALID_PARAMS;
+        }
+
+        ctx->width = width;
+        ctx->height = height;
+        
+        return NB_OK;
+}
+
+
+nb_result
+nbr_viewport_get(
+        nbr_ctx_t ctx,
+        int *width,
+        int *height)
+{
+        if(!ctx) {
+                return NB_INVALID_PARAMS;
+        }
+        
+        if(width) {
+                *width = ctx->width;
+        }
+        
+        if(height) {
+                *height = ctx->height;
+        }
+        
         return NB_OK;
 }
 

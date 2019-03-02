@@ -45,7 +45,13 @@ nbogl3_render(
 #include <nebula/renderer.h>
 
 
-#define NEB_OGL3_DEBUG_SUPPORT 1
+#ifndef NEB_OGL3_DEBUG_SUPPORT
+        #ifndef NDEBUG
+                #define NEB_OGL3_DEBUG_SUPPORT 1
+        #else
+                #define NEB_OGL3_DEBUG_SUPPORT 0
+        #endif
+#endif
 
 
 #ifdef _WIN32
@@ -353,7 +359,10 @@ nbogl3_render(
                         -1,
                         "Nebula OGL Render");
         }
-
+        
+        int vp_width, vp_height;
+        nbr_viewport_get(nbr_ctx, &vp_width, &vp_height);
+        
         /* get nebula render data */
         struct nb_render_data rd;
         memset(&rd, 0, sizeof(rd));
@@ -370,15 +379,12 @@ nbogl3_render(
                 { -1.f, 1.f, 0.f, 1.f },
         };
         
-        float display_width = 500;
-        float display_height = 500;
-
-        proj[0][0] /= (GLfloat)display_width;
-        proj[1][1] /= (GLfloat)display_height;
+        proj[0][0] /= (GLfloat)vp_width;
+        proj[1][1] /= (GLfloat)vp_height;
 
         glUseProgram(ctx->pro);
         glUniformMatrix4fv(ctx->uniproj, 1, GL_FALSE, &proj[0][0]);
-        glViewport(0, 0, display_width, display_height);
+        glViewport(0, 0, vp_width, vp_height);
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -425,7 +431,7 @@ nbogl3_render(
                                 int h = cmd->data.clip_rect[3];
 
                                 int x = cmd->data.clip_rect[0];
-                                int y = display_height - (cmd->data.clip_rect[1] + h);
+                                int y = vp_height - (cmd->data.clip_rect[1] + h);
 
                                 glScissor(x, y, w, h);
                         }
