@@ -56,6 +56,8 @@ nbogl3_render(
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
+#undef near
+#undef far
 #include <windows.h>
 #include <gl/GL.h>
 #include <stdint.h>
@@ -76,7 +78,6 @@ typedef uintptr_t GLsizeiptr;
 #define GL_TEXTURE0                       0x84C0
 #define GL_STREAM_DRAW                    0x88E0
 #define GL_WRITE_ONLY                     0x88B9
-
 
 #define APIENTRYP *
 
@@ -240,6 +241,128 @@ struct nbogl3_ctx {
 
 #define NB_ARR_COUNT(ARR) (sizeof((ARR)) / sizeof((ARR)[0]))
 #define NB_ARRAY_DATA(ARR) &ARR[0]
+
+
+/* ---------------------------------------------------------------- Render -- */
+
+
+nb_result
+nbogl3_render(
+        nbogl3_ctx_t ctx,
+        nbr_ctx_t nbr_ctx)
+{
+        if (!ctx || !nbr_ctx) {
+                return NB_INVALID_PARAMS;
+        }
+
+        if(NEB_OGL3_DEBUG_SUPPORT) {
+                glPushDebugGroup(
+                        GL_DEBUG_SOURCE_APPLICATION,
+                        GL_DEBUG_TYPE_PUSH_GROUP,
+                        -1,
+                        "Nebula OGL Render");
+        }
+        
+        int vp_width, vp_height;
+        nbr_viewport_get(nbr_ctx, &vp_width, &vp_height);
+        
+        /* get nebula render data */
+        struct nb_render_data rd;
+        memset(&rd, 0, sizeof(rd));
+        nb_get_render_data(nbr_ctx, &rd);
+
+        /* setup gl */
+        glDisable(GL_DEPTH_TEST);
+
+        /* prepare pass */
+        GLfloat proj[4][4] = {
+                { 2.f, 0.f, 0.f, 0.f },
+                { 0.f, -2.f, 0.f, 0.f },
+                { 0.f, 0.f, -1.f, 0.f },
+                { -1.f, 1.f, 0.f, 1.f },
+        };
+        
+        proj[0][0] /= (GLfloat)vp_width;
+        proj[1][1] /= (GLfloat)vp_height;
+
+        glUseProgram(ctx->pro);
+        glUniformMatrix4fv(ctx->uniproj, 1, GL_FALSE, &proj[0][0]);
+        glViewport(0, 0, vp_width, vp_height);
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+        unsigned int f_idx = nb_debug_get_font(nbr_ctx);
+        GLuint ftex = ctx->ftex[f_idx];
+
+        glUniform1i(ctx->unitex, 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, ftex);
+
+        glBindVertexArray(ctx->vao);
+        glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->ibo);
+
+        int vtx_size = sizeof(rd.vtx[0]) * rd.vtx_count;
+        int idx_size = sizeof(rd.idx[0]) * rd.idx_count;
+
+        glBufferData(GL_ARRAY_BUFFER, vtx_size, NULL, GL_STREAM_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_size, NULL, GL_STREAM_DRAW);
+
+        void *vbo_data = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+        void *ibo_data = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
+
+        memcpy(vbo_data, (void*)rd.vtx, vtx_size);
+        memcpy(ibo_data, (void*)rd.idx, idx_size);
+
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+
+        glEnable(GL_SCISSOR_TEST);
+        // glEnable(GL_DEPTH_TEST);
+
+        /* render */
+        unsigned int list_idx, i;
+        for (list_idx = 0; list_idx < rd.cmd_list_count; list_idx++) {
+                struct nb_render_cmd_list * cmd_list = rd.cmd_lists + list_idx;
+
+                for (i = 0; i < cmd_list->count; ++i) {
+                        struct nb_render_cmd * cmd = cmd_list->cmds + i;
+
+                        if (cmd->type == NB_RENDER_CMD_TYPE_SCISSOR) {
+                                int w = cmd->data.clip_rect[2];
+                                int h = cmd->data.clip_rect[3];
+
+                                int x = cmd->data.clip_rect[0];
+                                int y = vp_height - (cmd->data.clip_rect[1] + h);
+
+                                glScissor(x, y, w, h);
+                        }
+                        else {
+                                GLenum mode = GL_TRIANGLES;
+
+                                if (cmd->type == NB_RENDER_CMD_TYPE_LINES) {
+                                        mode = GL_LINE_STRIP;
+                                }
+
+                                unsigned long offset = cmd->data.elem.offset * sizeof(unsigned short);
+                                glDrawElements(
+                                        mode,
+                                        cmd->data.elem.count,
+                                        GL_UNSIGNED_SHORT,
+                                        (void *)((uint64_t)offset));
+                        }
+                }
+        }
+
+        glDisable(GL_SCISSOR_TEST);
+
+        if(NEB_OGL3_DEBUG_SUPPORT) {
+                glPopDebugGroup();
+        }
+
+        return NB_FAIL;
+}
 
 
 /* -------------------------------------------------------------- Lifetime -- */
@@ -513,128 +636,6 @@ nbogl3_ctx_destroy(
 }
 
 
-/* ---------------------------------------------------------------- Render -- */
-
-
-nb_result
-nbogl3_render(
-        nbogl3_ctx_t ctx,
-        nbr_ctx_t nbr_ctx)
-{
-        if (!ctx || !nbr_ctx) {
-                return NB_INVALID_PARAMS;
-        }
-
-        if(NEB_OGL3_DEBUG_SUPPORT) {
-                glPushDebugGroup(
-                        GL_DEBUG_SOURCE_APPLICATION,
-                        GL_DEBUG_TYPE_PUSH_GROUP,
-                        -1,
-                        "Nebula OGL Render");
-        }
-        
-        int vp_width, vp_height;
-        nbr_viewport_get(nbr_ctx, &vp_width, &vp_height);
-        
-        /* get nebula render data */
-        struct nb_render_data rd;
-        memset(&rd, 0, sizeof(rd));
-        nb_get_render_data(nbr_ctx, &rd);
-
-        /* setup gl */
-        glDisable(GL_DEPTH_TEST);
-
-        /* prepare pass */
-        GLfloat proj[4][4] = {
-                { 2.f, 0.f, 0.f, 0.f },
-                { 0.f, -2.f, 0.f, 0.f },
-                { 0.f, 0.f, -1.f, 0.f },
-                { -1.f, 1.f, 0.f, 1.f },
-        };
-        
-        proj[0][0] /= (GLfloat)vp_width;
-        proj[1][1] /= (GLfloat)vp_height;
-
-        glUseProgram(ctx->pro);
-        glUniformMatrix4fv(ctx->uniproj, 1, GL_FALSE, &proj[0][0]);
-        glViewport(0, 0, vp_width, vp_height);
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-        unsigned int f_idx = nb_debug_get_font(nbr_ctx);
-        GLuint ftex = ctx->ftex[f_idx];
-
-        glUniform1i(ctx->unitex, 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, ftex);
-
-        glBindVertexArray(ctx->vao);
-        glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->ibo);
-
-        int vtx_size = sizeof(rd.vtx[0]) * rd.vtx_count;
-        int idx_size = sizeof(rd.idx[0]) * rd.idx_count;
-
-        glBufferData(GL_ARRAY_BUFFER, vtx_size, NULL, GL_STREAM_DRAW);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_size, NULL, GL_STREAM_DRAW);
-
-        void *vbo_data = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-        void *ibo_data = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
-
-        memcpy(vbo_data, (void*)rd.vtx, vtx_size);
-        memcpy(ibo_data, (void*)rd.idx, idx_size);
-
-        glUnmapBuffer(GL_ARRAY_BUFFER);
-        glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
-
-        glEnable(GL_SCISSOR_TEST);
-        // glEnable(GL_DEPTH_TEST);
-
-        /* render */
-        unsigned int list_idx, i;
-        for (list_idx = 0; list_idx < rd.cmd_list_count; list_idx++) {
-                struct nb_render_cmd_list * cmd_list = rd.cmd_lists + list_idx;
-
-                for (i = 0; i < cmd_list->count; ++i) {
-                        struct nb_render_cmd * cmd = cmd_list->cmds + i;
-
-                        if (cmd->type == NB_RENDER_CMD_TYPE_SCISSOR) {
-                                int w = cmd->data.clip_rect[2];
-                                int h = cmd->data.clip_rect[3];
-
-                                int x = cmd->data.clip_rect[0];
-                                int y = vp_height - (cmd->data.clip_rect[1] + h);
-
-                                glScissor(x, y, w, h);
-                        }
-                        else {
-                                GLenum mode = GL_TRIANGLES;
-
-                                if (cmd->type == NB_RENDER_CMD_TYPE_LINES) {
-                                        mode = GL_LINE_STRIP;
-                                }
-
-                                unsigned long offset = cmd->data.elem.offset * sizeof(unsigned short);
-                                glDrawElements(
-                                        mode,
-                                        cmd->data.elem.count,
-                                        GL_UNSIGNED_SHORT,
-                                        (void *)((uint64_t)offset));
-                        }
-                }
-        }
-
-        glDisable(GL_SCISSOR_TEST);
-
-        if(NEB_OGL3_DEBUG_SUPPORT) {
-                glPopDebugGroup();
-        }
-
-        return NB_FAIL;
-}
-
-
 /* ---------------------------------------------- Stdlib / Config / Macros -- */
 
 
@@ -647,8 +648,45 @@ nbogl3_render(
 
 
 #ifndef _WIN32
-#undef glPopDebugGroup
 #undef glPushDebugGroup
+#undef glPopDebugGroup
+#undef glActiveTexture
+#undef glAttachShader
+#undef glBindBuffer
+#undef glBindVertexArray
+#undef glBufferData
+#undef glCompileShader
+#undef glCreateProgram
+#undef glEnableVertexAttribArray
+#undef glGenBuffers
+#undef glGetProgramiv
+#undef glCreateShader
+#undef glDeleteShader
+#undef glGenVertexArrays
+#undef glGetAttribLocation
+#undef glGetShaderiv
+#undef glGetUniformLocation
+#undef glLinkProgram
+#undef glMapBuffer
+#undef glShaderSource
+#undef glUniform1i
+#undef glUniformMatrix4fv
+#undef glUnmapBuffer
+#undef glUseProgram
+#undef glVertexAttribPointer
+
+#undef GL_R8
+#undef GL_FRAGMENT_SHADER
+#undef GL_VERTEX_SHADER
+#undef GL_DEBUG_SOURCE_APPLICATION
+#undef GL_DEBUG_TYPE_PUSH_GROUP
+#undef GL_COMPILE_STATUS
+#undef GL_LINK_STATUS
+#undef GL_ARRAY_BUFFER
+#undef GL_ELEMENT_ARRAY_BUFFER
+#undef GL_TEXTURE0
+#undef GL_STREAM_DRAW
+#undef GL_WRITE_ONLY
 #endif
 
 
