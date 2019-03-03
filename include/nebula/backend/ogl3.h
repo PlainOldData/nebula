@@ -55,30 +55,111 @@ nbogl3_render(
 
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <gl/GL.h>
+#include <stdint.h>
 
 typedef char GLchar;
+typedef void GLvoid;
+typedef uintptr_t GLsizeiptr;
 
+#define GL_R8                             0x8229
+#define GL_FRAGMENT_SHADER                0x8B30
+#define GL_VERTEX_SHADER                  0x8B31
 #define GL_DEBUG_SOURCE_APPLICATION       0x824A
 #define GL_DEBUG_TYPE_PUSH_GROUP          0x8269
+#define GL_COMPILE_STATUS                 0x8B81
+#define GL_LINK_STATUS                    0x8B82
+#define GL_ARRAY_BUFFER                   0x8892
+#define GL_ELEMENT_ARRAY_BUFFER           0x8893
+#define GL_TEXTURE0                       0x84C0
+#define GL_STREAM_DRAW                    0x88E0
+#define GL_WRITE_ONLY                     0x88B9
+
 
 #define APIENTRYP *
 
 typedef void (APIENTRYP PFNGLPUSHDEBUGGROUPPROC)(GLenum source, GLuint id, GLsizei length, const GLchar *message);
 typedef void (APIENTRYP PFNGLPOPDEBUGGROUPPROC)(void);
-typedef void (APIENTRYP PFNGLCLEARCOLORPROC)(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
-typedef void (APIENTRYP PFNGLCLEARPROC)(GLbitfield bits);
+typedef void (APIENTRYP PFNGLACTIVETEXTUREPROC)(GLenum texture);
+typedef void (APIENTRYP PFNGLATTACHSHADERPROC)(GLuint program, GLuint shd);
+typedef void (APIENTRYP PFNGLBINDBUFFERPROC)(GLenum type, GLuint buffer_id);
+typedef void (APIENTRYP PFNGLBINDVERTEXARRAYPROC)(GLuint vao);
+typedef void (APIENTRYP PFNGLBUFFERDATAPROC)(GLenum, GLsizeiptr, const GLvoid*, GLenum use);
+typedef void (APIENTRYP PFNGLCOMPILESHADERPROC)(GLuint shd);
+typedef GLuint (APIENTRYP PFNGLCREATEPROGRAMPROC)(void);
+typedef void (APIENTRYP PFNGLENABLEVERTEXATTRIBARRAYPROC)(GLuint idx);
+typedef void (APIENTRYP PFNGLGENBUFFERSPROC)(GLsizei n, GLuint *buffs);
+typedef void (APIENTRYP PFNGLGETPROGRAMIVPROC)(GLuint prog, GLenum pname, GLint*params);
+typedef GLuint (APIENTRYP PFNGLCREATESHADERPROC)(GLenum shaderType);
+typedef void (APIENTRYP PFNGLDELETESHADERPROC)(GLuint shd);
+typedef void (APIENTRYP PFNGLGENVERTEXARRAYSPROC)(GLsizei n, GLuint *arr);
+typedef GLint (APIENTRYP PFNGLGETATTRIBLOCATIONPROC)(GLuint prog, const GLchar *name);
+typedef void (APIENTRYP PFNGLGETSHADERIVPROC)(GLuint shd, GLenum pname, GLint *params);
+typedef GLint (APIENTRYP PFNGLGETUNIFORMLOCATIONPROC)(GLuint pro, const GLchar *name);
+typedef void (APIENTRYP PFNGLLINKPROGRAMPROC)(GLuint pro);
+typedef void * (APIENTRYP PFNGLMAPBUFFERPROC)(GLenum target, GLenum access);
+typedef void (APIENTRYP PFNGLSHADERSOURCEPROC)(GLuint shd, GLsizei count, const GLchar *const *str, const GLint *len);
+typedef void (APIENTRYP PFNGLUNIFORM1IPROC)(GLint loc, GLint v0);
+typedef void (APIENTRYP PFNGLUNIFORMMATRIX4FVPROC)(GLint loc, GLsizei count, const GLfloat *val);
+typedef GLboolean (APIENTRYP PFNGLUNMAPBUFFERPROC)(GLenum target);
+typedef void (APIENTRYP PFNGLUSEPROGRAMPROC)(GLuint pro);
+typedef void (APIENTRYP PFNGVERTEXATTRIBPOINTERPROC)(GLuint idx, GLint size, GLenum type, GLboolean norm, GLsizei stride, const GLvoid *ptr);
 
 PFNGLPUSHDEBUGGROUPPROC glPushDebugGroup_neb;
 PFNGLPOPDEBUGGROUPPROC glPopDebugGroup_neb;
-PFNGLCLEARCOLORPROC glClearColor_neb;
-PFNGLCLEARPROC glClear_neb;
+PFNGLACTIVETEXTUREPROC glActiveTexture_neb;
+PFNGLATTACHSHADERPROC glAttachShader_neb;
+PFNGLBINDBUFFERPROC glBindBuffer_neb;
+PFNGLBINDVERTEXARRAYPROC glBindVertexArray_neb;
+PFNGLBUFFERDATAPROC glBufferData_neb;
+PFNGLCOMPILESHADERPROC glCompileShader_neb;
+PFNGLCREATEPROGRAMPROC glCreateProgram_neb;
+PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray_neb;
+PFNGLGENBUFFERSPROC glGenBuffers_neb;
+PFNGLGETPROGRAMIVPROC glGetProgramiv_neb;
+PFNGLCREATESHADERPROC glCreateShader_neb;
+PFNGLDELETESHADERPROC glDeleteShader_neb;
+PFNGLGENVERTEXARRAYSPROC glGenVertexArrays_neb;
+PFNGLGETATTRIBLOCATIONPROC glGetAttribLocation_neb;
+PFNGLGETSHADERIVPROC glGetShaderiv_neb;
+PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation_neb;
+PFNGLLINKPROGRAMPROC glLinkProgram_neb;
+PFNGLMAPBUFFERPROC glMapBuffer_neb;
+PFNGLSHADERSOURCEPROC glShaderSource_neb;
+PFNGLUNIFORM1IPROC glUniform1i_neb;
+PFNGLUNIFORMMATRIX4FVPROC glUniformMatrix4fv_neb;
+PFNGLUNMAPBUFFERPROC glUnmapBuffer_neb;
+PFNGLUSEPROGRAMPROC glUseProgram_neb;
+PFNGVERTEXATTRIBPOINTERPROC glVertexAttribPointer_neb;
 
 #define glPushDebugGroup glPushDebugGroup_neb
 #define glPopDebugGroup glPopDebugGroup_neb
-#define glClearColor glClearColor_neb
-#define glClear glClear_neb
+#define glActiveTexture glActiveTexture_neb
+#define glAttachShader glAttachShader_neb
+#define glBindBuffer glBindBuffer_neb
+#define glBindVertexArray glBindVertexArray_neb
+#define glBufferData glBufferData_neb
+#define glCompileShader glCompileShader_neb
+#define glCreateProgram glCreateProgram_neb
+#define glEnableVertexAttribArray glEnableVertexAttribArray_neb
+#define glGenBuffers glGenBuffers_neb
+#define glGetProgramiv glGetProgramiv_neb
+#define glCreateShader glCreateShader_neb
+#define glDeleteShader glDeleteShader_neb
+#define glGenVertexArrays glGenVertexArrays_neb
+#define glGetAttribLocation glGetAttribLocation_neb
+#define glGetShaderiv glGetShaderiv_neb
+#define glGetUniformLocation glGetUniformLocation_neb
+#define glLinkProgram glLinkProgram_neb
+#define glMapBuffer glMapBuffer_neb
+#define glShaderSource glShaderSource_neb
+#define glUniform1i glUniform1i_neb
+#define glUniformMatrix4fv glUniformMatrix4fv_neb
+#define glUnmapBuffer glUnmapBuffer_neb
+#define glUseProgram glUseProgram_neb
+#define glVertexAttribPointer glVertexAttribPointer_neb
 
 #endif
 
@@ -179,17 +260,109 @@ nbogl3_ctx_create(
         #ifdef _WIN32
         void * tmp = 0;
 
-        tmp = wglGetProcAddress("glClearColor");
-        glClearColor = (PFNGLCLEARCOLORPROC)tmp;
-
-        tmp = wglGetProcAddress("glClear");
-        glClear = (PFNGLCLEARPROC)tmp;
-
         tmp = wglGetProcAddress("glPushDebugGroup");
+        NB_ASSERT(tmp);
         glPushDebugGroup = (PFNGLPUSHDEBUGGROUPPROC)tmp;
 
         tmp = wglGetProcAddress("glPopDebugGroup");
+        NB_ASSERT(tmp);
         glPopDebugGroup = (PFNGLPOPDEBUGGROUPPROC)tmp;
+
+        tmp = wglGetProcAddress("glActiveTexture");
+        NB_ASSERT(tmp);
+        glActiveTexture = (PFNGLACTIVETEXTUREPROC)tmp;
+
+        tmp = wglGetProcAddress("glAttachShader");
+        NB_ASSERT(tmp);
+        glAttachShader = (PFNGLATTACHSHADERPROC)tmp;
+
+        tmp = wglGetProcAddress("glBindBuffer");
+        NB_ASSERT(tmp);
+        glBindBuffer = (PFNGLBINDBUFFERPROC)tmp;
+
+        tmp = wglGetProcAddress("glBindVertexArray");
+        NB_ASSERT(tmp);
+        glBindVertexArray = (PFNGLBINDVERTEXARRAYPROC)tmp;
+
+        tmp = wglGetProcAddress("glBufferData");
+        NB_ASSERT(tmp);
+        glBufferData = (PFNGLBUFFERDATAPROC)tmp;
+
+        tmp = wglGetProcAddress("glCompileShader");
+        NB_ASSERT(tmp);
+        glCompileShader = (PFNGLCOMPILESHADERPROC)tmp;
+
+        tmp = wglGetProcAddress("glCreateProgram");
+        NB_ASSERT(tmp);
+        glCreateProgram = (PFNGLCREATEPROGRAMPROC)tmp;
+
+        tmp = wglGetProcAddress("glEnableVertexAttribArray");
+        NB_ASSERT(tmp);
+        glEnableVertexAttribArray = (PFNGLENABLEVERTEXATTRIBARRAYPROC)tmp;
+
+        tmp = wglGetProcAddress("glGenBuffers");
+        NB_ASSERT(tmp);
+        glGenBuffers = (PFNGLGENBUFFERSPROC)tmp;
+
+        tmp = wglGetProcAddress("glGetProgramiv");
+        NB_ASSERT(tmp);
+        glGetProgramiv = (PFNGLGETPROGRAMIVPROC)tmp;
+
+        tmp = wglGetProcAddress("glCreateShader");
+        NB_ASSERT(tmp);
+        glCreateShader = (PFNGLCREATESHADERPROC)tmp;
+
+        tmp = wglGetProcAddress("glDeleteShader");
+        NB_ASSERT(tmp);
+        glDeleteShader = (PFNGLDELETESHADERPROC)tmp;
+
+        tmp = wglGetProcAddress("glGenVertexArrays");
+        NB_ASSERT(tmp);
+        glGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC)tmp;
+
+        tmp = wglGetProcAddress("glGetAttribLocation");
+        NB_ASSERT(tmp);
+        glGetAttribLocation = (PFNGLGETATTRIBLOCATIONPROC)tmp;
+
+        tmp = wglGetProcAddress("glGetShaderiv");
+        NB_ASSERT(tmp);
+        glGetShaderiv = (PFNGLGETSHADERIVPROC)tmp;
+
+        tmp = wglGetProcAddress("glGetUniformLocation");
+        NB_ASSERT(tmp);
+        glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC)tmp;
+
+        tmp = wglGetProcAddress("glLinkProgram");
+        NB_ASSERT(tmp);
+        glLinkProgram = (PFNGLLINKPROGRAMPROC)tmp;
+
+        tmp = wglGetProcAddress("glMapBuffer");
+        NB_ASSERT(tmp);
+        glMapBuffer = (PFNGLMAPBUFFERPROC)tmp;
+
+        tmp = wglGetProcAddress("glShaderSource");
+        NB_ASSERT(tmp);
+        glShaderSource = (PFNGLSHADERSOURCEPROC)tmp;
+
+        tmp = wglGetProcAddress("glUniform1i");
+        NB_ASSERT(tmp);
+        glUniform1i = (PFNGLUNIFORM1IPROC)tmp;
+
+        tmp = wglGetProcAddress("glUniformMatrix4fv");
+        NB_ASSERT(tmp);
+        glUniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC)tmp;
+
+        tmp = wglGetProcAddress("glUnmapBuffer");
+        NB_ASSERT(tmp);
+        glUnmapBuffer = (PFNGLUNMAPBUFFERPROC)tmp;
+
+        tmp = wglGetProcAddress("glUseProgram");
+        NB_ASSERT(tmp);
+        glUseProgram = (PFNGLUSEPROGRAMPROC)tmp;
+
+        tmp = wglGetProcAddress("glVertexAttribPointer");
+        NB_ASSERT(tmp);
+        glVertexAttribPointer = (PFNGVERTEXATTRIBPOINTERPROC)tmp;
 
         #endif
         
