@@ -7,49 +7,7 @@
 
 
 typedef struct nbs_ctx * nbs_ctx_t;
-
-
-struct nb_window {
-        uint64_t unique_id;
-        int win_idx;
-        struct nb_rect rect;
-
-        struct nbi_cmd_buf *cmd_buf;
-};
-
-
-struct nb_node;
-
-
-struct nb_node_input {
-        char type[16];
-        char name[16];
-
-        int node_idx;
-
-};
-
-
-struct nb_node_output {
-        char type[16];
-        char name[16];
-
-        struct nb_node_input *inputs[8];
-};
-
-
-struct nb_node {
-        uint64_t unique_id;
-        struct nb_rect rect;
-
-        struct nb_node_input inputs[8];
-        struct nb_node_output outputs[8];
-};
-
-
-struct nb_node nodes[32];
-struct nbi_cmd_buf *node_cmd_buffers[32];
-struct nbi_cmd_buf bez_cmd_buf;
+struct nbs_window;
 
 
 /* -------------------------------------------------------------- Lifetime -- */
@@ -112,7 +70,7 @@ nbs_frame_submit(
 /* -------------------------------------------------------- Window widgets -- */
 
 
-const struct nb_window *
+void *
 nbs_window_begin(
         nbs_ctx_t ctx,                      /* required */
         const char * name,                  /* required */
@@ -122,14 +80,14 @@ nbs_window_begin(
 void
 nbs_window_end(
         nbs_ctx_t ctx,                      /* required */
-        const struct nb_window * win);      /* required */
+        void * win);                        /* required */
 
 
 /* returns 1 on click, 0 otherwise */
 int
 nbs_button(
         nbs_ctx_t ctx,                      /* required */
-        const struct nb_window * win,       /* required */
+        void * win,                         /* required */
         const char * name);                 /* required */
 
 
@@ -152,12 +110,20 @@ nbs_button(
 #include <nebula/renderer.h>
 
 
+struct nb_window {
+        uint64_t unique_id;
+        int win_idx;
+        struct nb_rect rect;
+
+        struct nbi_cmd_buf *cmd_buf;
+};
+
+
 struct nbs_ctx {
         nbc_ctx_t core_ctx;
         nbr_ctx_t rdr_ctx;
 
         struct nb_window windows[32];
-        struct nb_node nodes[512];
 };
 
 
@@ -173,15 +139,18 @@ struct nbs_ctx {
 #define NB_ASSERT(expr) assert(expr)
 #endif
 
+
 #ifndef NB_ALLOC
 #include <stdlib.h>
 #define NB_ALLOC(bytes) malloc(bytes)
 #endif
 
+
 #ifndef NB_FREE
 #include <stdlib.h>
 #define NB_FREE(addr) free(addr)
 #endif
+
 
 #ifndef NB_ZERO_MEM
 #include <string.h>
@@ -268,7 +237,7 @@ nbi_window_search(
 }
 
 
-const struct nb_window *
+void *
 nbs_window_begin(
         nbs_ctx_t ctx,
         const char *name,
@@ -355,30 +324,32 @@ nbs_window_begin(
         nbr_scissor_set(window->cmd_buf, rect); 
         nbr_box(ctx->rdr_ctx, window->cmd_buf, window->rect, color, 4.0f);
         
-        return window;
+        return (void*)window;
 }
 
 
 void
 nbs_window_end(
         nbs_ctx_t ctx,
-        const struct nb_window * win)
+        void * pwin)
 {
         (void)ctx;
-        (void)win;
+        (void)pwin;
 }
 
 
 int
 nbs_button(
         nbs_ctx_t ctx,
-        const struct nb_window *win,
+        void * pwin,
         const char *name)
 {
-        if(!ctx || !win || !name || strlen(name) == 0) {
+        if(!ctx || !pwin || !name || strlen(name) == 0) {
                 NB_ASSERT(!"NB_INVALID_PARAMS");
                 return 0;
         }
+
+        struct nb_window *win = (struct nb_window*)pwin;
 
         /* build some data */
         uint64_t hash_key = nbi_hash_str(name);

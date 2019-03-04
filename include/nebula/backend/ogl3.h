@@ -237,15 +237,18 @@ struct nbogl3_ctx {
 #define NB_ASSERT(expr) assert(expr)
 #endif
 
+
 #ifndef NB_ALLOC
 #include <stdlib.h>
 #define NB_ALLOC(bytes) malloc(bytes)
 #endif
 
+
 #ifndef NB_FREE
 #include <stdlib.h>
 #define NB_FREE(addr) free(addr)
 #endif
+
 
 #ifndef NB_ZERO_MEM
 #include <string.h>
