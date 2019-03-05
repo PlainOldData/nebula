@@ -7,7 +7,6 @@
 
 
 typedef struct nbs_ctx * nbs_ctx_t;
-struct nbs_window;
 
 
 /* -------------------------------------------------------------- Lifetime -- */
@@ -283,7 +282,6 @@ nbs_window_begin(
         nbc_collider(ctx->core_ctx, &coll_desc, &inter);
 
         /* render */
-        /*struct nb_color color = nb_color_from_int(0xFF0000FF);*/
         struct nb_color color = nb_color_from_int(color_hex);
 
         if(inter.flags & NB_INTERACT_HOVER) {
@@ -320,9 +318,13 @@ nbs_window_begin(
         rect[1] = (float)window->rect.y;
         rect[2] = (float)window->rect.w;
         rect[3] = (float)window->rect.h;
-
-        nbr_scissor_set(window->cmd_buf, rect); 
+        
+        nbr_scissor_set(window->cmd_buf, rect);
         nbr_box(ctx->rdr_ctx, window->cmd_buf, window->rect, color, 4.0f);
+        
+        float text_col[4] = {1,1,0,1};
+        rect[1] += 10;
+        nbr_text(ctx->rdr_ctx, window->cmd_buf, &rect[0], 0, text_col, name);
         
         return (void*)window;
 }
