@@ -414,7 +414,6 @@ nbc_collider(
         }
 
         for(i = 0; i < count; ++i) {
-
                 struct nbi_collider *coll = 0;
                 coll = &ctx->colliders[i];
 
@@ -422,7 +421,7 @@ nbc_collider(
                         insert_idx = i;
                         break;
                 }
-        };
+        }
 
         /* check if space */
         if(insert_idx > NB_ARR_COUNT(ctx->colliders)) {
@@ -445,10 +444,12 @@ nbc_collider(
         memmove(dst, src, size);
 
         /* insert new collider */
-        ctx->colliders[insert_idx].index = desc->index;
-        ctx->colliders[insert_idx].rect = *desc->rect;
-        ctx->colliders[insert_idx].unique_id = desc->unique_id;
         ctx->collider_count += 1;
+        
+        struct nbi_collider *coll = &ctx->colliders[insert_idx];
+        coll->index = desc->index;
+        coll->rect = *desc->rect;
+        coll->unique_id = desc->unique_id;
 
         /* early bail if not interacting */
         if(!out_inter) {
