@@ -402,8 +402,8 @@ nbc_collider(
         }
 
         int desired_idx = desc->index;
-        unsigned int insert_idx = 0;
         int count = ctx->collider_count;
+        unsigned int insert_idx = count;
         int capacity = NB_ARR_COUNT(ctx->colliders);
         int i;
 
@@ -414,10 +414,14 @@ nbc_collider(
         }
 
         for(i = 0; i < count; ++i) {
-                if(ctx->colliders[i].index > desired_idx) {
+
+                struct nbi_collider *coll = 0;
+                coll = &ctx->colliders[i];
+
+                if(coll->index > desired_idx) {
                         insert_idx = i;
                         break;
-                };
+                }
         };
 
         /* check if space */
@@ -435,12 +439,13 @@ nbc_collider(
                 return NB_FAIL;
         }
 
-        void *dst = (void*)&ctx->colliders[insert_idx + 1];
-        void *src = (void*)&ctx->colliders[insert_idx];
-        size_t size = sizeof(ctx->colliders[0]) * (capacity - insert_idx - 1);
+        void *dst = (void*)&ctx->colliders[dst_i];
+        void *src = (void*)&ctx->colliders[src_i];
+        size_t size = sizeof(ctx->colliders[0]) * (capacity - src_i - 1);
         memmove(dst, src, size);
 
         /* insert new collider */
+        ctx->colliders[insert_idx].index = desc->index;
         ctx->colliders[insert_idx].rect = *desc->rect;
         ctx->colliders[insert_idx].unique_id = desc->unique_id;
         ctx->collider_count += 1;
@@ -670,6 +675,7 @@ nbc_frame_submit(
                 if(contains == NB_TRUE) {
                         ctx->inter_idx = ctx->colliders[i].index;
                         ctx->inter_id = ctx->colliders[i].unique_id;
+                        break;
                 }
         }
 
