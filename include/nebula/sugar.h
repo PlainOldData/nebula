@@ -285,11 +285,9 @@ nbs_window_begin(
         coll_desc.rect = &window->rect;
 
         struct nb_interaction inter;
-
         nbc_collider(ctx->core_ctx, &coll_desc, &inter);
 
         /* render */
-
         if(inter.flags & NB_INTERACT_HOVER) {
                 bgcol = NB_THEME_WIN_BG_HOVER;
         }
@@ -322,49 +320,29 @@ nbs_window_begin(
                 bgcol = NB_THEME_WIN_BG_DRAG;
         }
 
-        struct nb_color color = nb_color_from_int(bgcol);
-
-        float c_rad = NB_THEME_WIN_CORNER_RADIUS;
+        struct nb_rect wrect = window->rect;
 
         /* border */
-        struct nb_color bcolor = nb_color_from_int(NB_THEME_WIN_BORDER_COLOR);
+        float bo_rad = NB_THEME_WIN_CORNER_RADIUS + NB_THEME_WIN_BORDER_SIZE;
+        struct nb_color bocolor = nb_color_from_int(NB_THEME_WIN_BORDER_COLOR);
+        struct nb_rect nbrect = nb_rect_expand(wrect, NB_THEME_WIN_BORDER_SIZE);
 
-        float brect[4];
-        brect[0] = (float)window->rect.x - NB_THEME_WIN_BORDER_SIZE;
-        brect[1] = (float)window->rect.y - NB_THEME_WIN_BORDER_SIZE;
-        brect[2] = (float)window->rect.w + (NB_THEME_WIN_BORDER_SIZE * 2);
-        brect[3] = (float)window->rect.h + (NB_THEME_WIN_BORDER_SIZE * 2);
-
-        struct nb_rect nbrect;
-        nbrect.x = brect[0];
-        nbrect.y = brect[1];
-        nbrect.w = brect[2];
-        nbrect.h = brect[3];
-
-        nbr_scissor_set(window->cmd_buf, brect);
-        nbr_box(ctx->rdr_ctx, window->cmd_buf, nbrect, bcolor, c_rad);
+        nbr_scissor_set(window->cmd_buf, nbrect);
+        nbr_box(ctx->rdr_ctx, window->cmd_buf, nbrect, bocolor, bo_rad);
 
         /* body */
-        float rect[4];
-        rect[0] = (float)window->rect.x;
-        rect[1] = (float)window->rect.y;
-        rect[2] = (float)window->rect.w;
-        rect[3] = (float)window->rect.h;
-
-        nbr_scissor_set(window->cmd_buf, rect);
-        nbr_box(ctx->rdr_ctx, window->cmd_buf, window->rect, color, c_rad);
+        float b_rad = NB_THEME_WIN_CORNER_RADIUS;
+        struct nb_color bgcolor = nb_color_from_int(bgcol);
+        
+        nbr_scissor_set(window->cmd_buf, wrect);
+        nbr_box(ctx->rdr_ctx, window->cmd_buf, wrect, bgcolor, b_rad);
         
         /* title */
-        rect[1] += 10;
+//        wrect.y += 10;
 
         struct nb_color txtc = nb_color_from_int(NB_THEME_WIN_TITLE_TXT_COLOR);
-        float col[4];
-        col[0] = txtc.r;
-        col[1] = txtc.g;
-        col[2] = txtc.b;
-        col[3] = txtc.a;
-
-        nbr_text(ctx->rdr_ctx, window->cmd_buf, &rect[0], 0, col, name);
+        nbr_scissor_set(window->cmd_buf, wrect);
+        nbr_text(ctx->rdr_ctx, window->cmd_buf, wrect, 0, txtc, name);
         
         return (void*)window;
 }
@@ -412,12 +390,12 @@ nbs_button(
         nbc_collider(ctx->core_ctx, &bcoll, &inter);
 
         /* renderable */
-        nbr_box(ctx->rdr_ctx, win->cmd_buf, rect, color, 8.0f);
+//        nbr_box(ctx->rdr_ctx, win->cmd_buf, rect, color, 8.0f);
 
         /* TEMP!! */
-        float text_rect[4] = { (float)rect.x + 5.0f, (float)rect.y + 15.0f, (float)rect.w, (float)rect.h, };
-        struct nb_color text_color = nb_color_from_int(0xFFFFFFFF);
-        nbr_text(ctx->rdr_ctx, win->cmd_buf, text_rect, 0, (float *)&text_color, "HELLO");
+//        float text_rect[4] = { (float)rect.x + 5.0f, (float)rect.y + 15.0f, (float)rect.w, (float)rect.h, };
+//        struct nb_color text_color = nb_color_from_int(0xFFFFFFFF);
+//        nbr_text(ctx->rdr_ctx, win->cmd_buf, text_rect, 0, (float *)&text_color, "HELLO");
   
         if(inter.flags & NB_INTERACT_CLICKED) {
                 return 1;

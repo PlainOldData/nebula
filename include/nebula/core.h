@@ -66,6 +66,15 @@ nb_rect_from_point_size(
 
 
 /*
+ * returns an expanded rect
+ */
+struct nb_rect
+nb_rect_expand(
+        struct nb_rect r,
+        int size);
+
+
+/*
  * returns NB_TRUE if the point is inside the rect, NB_FALSE if the point
  * is outside.
  */
@@ -702,7 +711,23 @@ nb_rect_from_point_size(
         rect.w = w; rect.h = h;
 
         return rect;
-};
+}
+
+
+struct nb_rect
+nb_rect_expand(
+        struct nb_rect rect,
+        int size)
+{
+        int size_2x = size * 2;
+        
+        rect.x -= size;
+        rect.y -= size;
+        rect.w += size_2x;
+        rect.h += size_2x;
+        
+        return rect;
+}
 
 
 nb_bool

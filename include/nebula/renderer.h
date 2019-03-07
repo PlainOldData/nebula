@@ -34,7 +34,7 @@ struct nb_render_elem {
 
 union nb_render_cmd_data {
         struct nb_render_elem elem;
-        short clip_rect[4];
+        int clip_rect[4];
 };
 
 
@@ -246,7 +246,7 @@ nbr_line(
         struct nbi_cmd_buf * buf,
         float * p,
         float * q,
-        float * color);
+        struct nb_color color);
 
 
 void
@@ -257,7 +257,7 @@ nbr_bez(
         float * p1,
         float * p2,
         float * p3,
-        float * color);
+        struct nb_color color);
 
 
 enum nbr_text_flags {
@@ -280,16 +280,16 @@ void
 nbr_text(
         struct nb_renderer_ctx * ctx,
         struct nbi_cmd_buf * buf,
-        float * pos,
+        struct nb_rect pos,
         unsigned int flags,
-        float * color,
+        struct nb_color color,
         const char * str);
 
 
 void
 nbr_scissor_set(
         struct nbi_cmd_buf * buf,
-        float * rect);
+        struct nb_rect rect);
 
 
 void
@@ -517,17 +517,22 @@ nbi_font_init(
 
 
 static void
-nbi_push_vtx(struct nbi_vtx_buf * buf, float x, float y, float * color) {
+nbi_push_vtx(
+        struct nbi_vtx_buf * buf,
+        float x,
+        float y,
+        struct nb_color color)
+{
         buf->v[buf->v_count++] = x;
         buf->v[buf->v_count++] = y;
 
         buf->v[buf->v_count++] = 0.0f;
         buf->v[buf->v_count++] = 0.0f;
 
-        buf->v[buf->v_count++] = color[0];
-        buf->v[buf->v_count++] = color[1];
-        buf->v[buf->v_count++] = color[2];
-        buf->v[buf->v_count++] = color[3];
+        buf->v[buf->v_count++] = color.r;
+        buf->v[buf->v_count++] = color.g;
+        buf->v[buf->v_count++] = color.b;
+        buf->v[buf->v_count++] = color.a;
 }
 
 static void
@@ -537,7 +542,7 @@ nbi_push_vtx_uv(
         float y,
         float u,
         float v,
-        float * color)
+        struct nb_color color)
 {
         buf->v[buf->v_count++] = x;
         buf->v[buf->v_count++] = y;
@@ -545,10 +550,10 @@ nbi_push_vtx_uv(
         buf->v[buf->v_count++] = u;
         buf->v[buf->v_count++] = v;
 
-        buf->v[buf->v_count++] = color[0];
-        buf->v[buf->v_count++] = color[1];
-        buf->v[buf->v_count++] = color[2];
-        buf->v[buf->v_count++] = color[3];
+        buf->v[buf->v_count++] = color.r;
+        buf->v[buf->v_count++] = color.g;
+        buf->v[buf->v_count++] = color.b;
+        buf->v[buf->v_count++] = color.a;
 }
 
 static void
@@ -568,12 +573,12 @@ nbi_push_quad_idxs(
         buf->i[buf->i_count++] = top_rgt;
 }
 
-static short
+static int
 nbi_push_quad(
         struct nbi_vtx_buf * buf,
         short vtx,
         float * rect,
-        float * color)
+        struct nb_color color)
 {
         nbi_push_quad_idxs(buf, vtx, vtx + 1, vtx + 2, vtx + 3);
         nbi_push_vtx(buf, rect[0], rect[1], color);
@@ -583,11 +588,11 @@ nbi_push_quad(
         return 4;
 }
 
-static short
+static int
 nbi_push_round_corner(
         struct nbi_vtx_buf * buf,
         float * pos,
-        float * color,
+        struct nb_color color,
         short seg_count,
         float radius, float angle)
 {
@@ -729,16 +734,12 @@ nbr_box(
         struct nb_renderer_ctx * ctx,
         struct nbi_cmd_buf * buf,
         struct nb_rect rec,
-        struct nb_color col,
+        struct nb_color color,
         float radius)
 {
         float rect[4];
         rect[0] = (float)rec.x; rect[1] = (float)rec.y;
         rect[2] = (float)rec.w; rect[3] = (float)rec.h;
-
-        float color[4];
-        color[0] = col.r; color[1] = col.g;
-        color[2] = col.b; color[3] = col.a;
 
         struct nbi_vtx_buf * data = &ctx->vtx_buf;
 
@@ -801,7 +802,7 @@ nbr_line(
         struct nbi_cmd_buf * buf,
         float * p,
         float * q,
-        float * color)
+        struct nb_color color)
 {
         struct nbi_vtx_buf * data = &ctx->vtx_buf;
 
@@ -826,7 +827,7 @@ nbr_bez(
         float * p1,
         float * p2,
         float * p3,
-        float * color)
+        struct nb_color color)
 {
         struct nbi_vtx_buf * data = &ctx->vtx_buf;
 
@@ -913,9 +914,9 @@ nbr_text_(
         struct nb_renderer_ctx * ctx,
         struct nbi_cmd_buf * buf,
         struct nbi_font * font,
-        float * rect,
+        struct nb_rect rect,
         unsigned int flags,
-        float * color,
+        struct nb_color color,
         const char * text,
         float * out_size)
 {
@@ -933,11 +934,11 @@ nbr_text_(
         struct nbi_text_out out = {
                 .font = font,
 
-                .start_x = rect[0],
-                .end_x = rect[0] + rect[2],
-                .max_x = rect[0],
-                .x = rect[0],
-                .y = rect[1],
+                .start_x = (float)rect.x,
+                .end_x = (float)rect.x + (float)rect.w,
+                .max_x = (float)rect.x,
+                .x = (float)rect.x,
+                .y = (float)rect.y,
 
                 .align_type = flags & _NB_TEXT_ALIGN_BIT_MASK,
         };
@@ -1068,8 +1069,8 @@ nbr_text_(
         nbi_line_adv(data, &out);
 
         if(out_size) {
-                out_size[0] = out.max_x - rect[0];
-                out_size[1] = out.y - rect[1];
+                out_size[0] = out.max_x - rect.x;
+                out_size[1] = out.y - rect.y;
         }
 
         if(data) {
@@ -1089,8 +1090,10 @@ nbr_get_text_size(
         }
 
         struct nbi_font * font = ctx->font;
-        float rect[4] = { 0.0f, 0.0f, width, 0.0f, };
-        nbr_text_(ctx, 0, font, rect, flags, 0, text, out_size);
+        struct nb_rect rect;
+        rect.x = 0; rect.y = 0; rect.w = (int)width; rect.h = 0;
+        struct nb_color col = nb_color_from_int(0x0);
+        nbr_text_(ctx, 0, font, rect, flags, col, text, out_size);
 }
 
 
@@ -1098,9 +1101,9 @@ void
 nbr_text(
         struct nb_renderer_ctx * ctx,
         struct nbi_cmd_buf * buf,
-        float * rect,
+        struct nb_rect rect,
         unsigned int flags,
-        float * color,
+        struct nb_color color,
         const char * text)
 {
         struct nbi_font * font = ctx->font;
@@ -1114,17 +1117,32 @@ nbr_clamp_f32_to_i16(float x) {
 }
 
 
-void nbr_scissor_set(struct nbi_cmd_buf * buf, float * rect) {
-        buf->cmds[buf->cmd_count++] = (struct nb_render_cmd) {
-                .type = NB_RENDER_CMD_TYPE_SCISSOR,
-                .data.clip_rect[0] = nbr_clamp_f32_to_i16(rect[0]),
-                .data.clip_rect[1] = nbr_clamp_f32_to_i16(rect[1]),
-                .data.clip_rect[2] = nbr_clamp_f32_to_i16(rect[2]),
-                .data.clip_rect[3] = nbr_clamp_f32_to_i16(rect[3]),
-        };
+void
+nbr_scissor_set(
+        struct nbi_cmd_buf * buf,
+        struct nb_rect rect)
+{
+        if(!buf) {
+                NB_ASSERT(!"No buffer");
+                return;
+        }
+        
+        struct nb_render_cmd *cmd = &buf->cmds[buf->cmd_count++];
+        cmd->type = NB_RENDER_CMD_TYPE_SCISSOR;
+        cmd->data.clip_rect[0] = rect.x;
+        cmd->data.clip_rect[1] = rect.y;
+        cmd->data.clip_rect[2] = rect.w;
+        cmd->data.clip_rect[3] = rect.h;
 }
 
-void nbr_scissor_clear(struct nbi_cmd_buf * buf) {
+
+void nbr_scissor_clear(struct nbi_cmd_buf * buf)
+{
+        if(!buf) {
+                NB_ASSERT(!"No buffer");
+                return;
+        }
+        
         buf->cmds[buf->cmd_count++] = (struct nb_render_cmd) {
                 .type = NB_RENDER_CMD_TYPE_SCISSOR,
                 .data.clip_rect[0] = 0,
