@@ -181,7 +181,13 @@ nbi_hash_str(const char *name) {
 /* ---------------------------------------------------------- Window Style -- */
 
 
-#define NB_THEME_WINDOW_CLICK 0xFFFFFFFF
+#define NB_THEME_WIN_BG_COLD 0x393333FF
+#define NB_THEME_WIN_BG_HOVER 0x3C3C39FF
+#define NB_THEME_WIN_BG_DRAG 0x212321FF
+#define NB_THEME_WIN_CORNER_RADIUS 2.f
+#define NB_THEME_WIN_BORDER_SIZE 1
+#define NB_THEME_WIN_BORDER_COLOR 0x555555FF
+#define NB_THEME_WIN_TITLE_TXT_COLOR 0xEEEEEEFF
 
 
 /* -------------------------------------------------------- Window widgets -- */
@@ -252,6 +258,7 @@ nbs_window_begin(
         uint64_t hash_key = nbi_hash_str(name);
         struct nb_window *window = 0;
         int win_idx = 0;
+        uint32_t bgcol = NB_THEME_WIN_BG_COLD;
 
         nb_bool found = nbi_window_search(
                 ctx->windows,
@@ -282,49 +289,82 @@ nbs_window_begin(
         nbc_collider(ctx->core_ctx, &coll_desc, &inter);
 
         /* render */
-        struct nb_color color = nb_color_from_int(color_hex);
 
         if(inter.flags & NB_INTERACT_HOVER) {
-                color.g = 1.f;
+                bgcol = NB_THEME_WIN_BG_HOVER;
         }
 
         if(inter.flags & NB_INTERACT_DRAGGED) {
-                color.b = 1.f;
                 window->rect.x += (int)inter.delta_x;
                 window->rect.y += (int)inter.delta_y;
 
+                int idx = window->win_idx;
+
                 /* re-order cache if a background window was dragged */
-                if(window->win_idx > 0) {
+                if(idx > 0) {
                         struct nb_window win_cpy = *window;
                         window->unique_id = 0;
 
                         void *dst = (void*)&ctx->windows[1];
                         void *src = (void*)&ctx->windows[0];
-                        size_t size = sizeof(ctx->windows[0]) * (window->win_idx);
+                        size_t size = sizeof(ctx->windows[0]) * idx;
 
                         memmove(dst, src, size);
 
                         ctx->windows[0] = win_cpy;
                         window = &ctx->windows[0];
                 }
+
+                bgcol = NB_THEME_WIN_BG_DRAG;
         }
 
         if(inter.flags & NB_INTERACT_CLICKED) {
-                color = nb_color_from_int(NB_THEME_WINDOW_CLICK);
+                bgcol = NB_THEME_WIN_BG_DRAG;
         }
 
+        struct nb_color color = nb_color_from_int(bgcol);
+
+        float c_rad = NB_THEME_WIN_CORNER_RADIUS;
+
+        /* border */
+        struct nb_color bcolor = nb_color_from_int(NB_THEME_WIN_BORDER_COLOR);
+
+        float brect[4];
+        brect[0] = (float)window->rect.x - NB_THEME_WIN_BORDER_SIZE;
+        brect[1] = (float)window->rect.y - NB_THEME_WIN_BORDER_SIZE;
+        brect[2] = (float)window->rect.w + (NB_THEME_WIN_BORDER_SIZE * 2);
+        brect[3] = (float)window->rect.h + (NB_THEME_WIN_BORDER_SIZE * 2);
+
+        struct nb_rect nbrect;
+        nbrect.x = brect[0];
+        nbrect.y = brect[1];
+        nbrect.w = brect[2];
+        nbrect.h = brect[3];
+
+        nbr_scissor_set(window->cmd_buf, brect);
+        nbr_box(ctx->rdr_ctx, window->cmd_buf, nbrect, bcolor, c_rad);
+
+        /* body */
         float rect[4];
         rect[0] = (float)window->rect.x;
         rect[1] = (float)window->rect.y;
         rect[2] = (float)window->rect.w;
         rect[3] = (float)window->rect.h;
-        
+
         nbr_scissor_set(window->cmd_buf, rect);
-        nbr_box(ctx->rdr_ctx, window->cmd_buf, window->rect, color, 4.0f);
+        nbr_box(ctx->rdr_ctx, window->cmd_buf, window->rect, color, c_rad);
         
-        float text_col[4] = {1,1,0,1};
+        /* title */
         rect[1] += 10;
-        nbr_text(ctx->rdr_ctx, window->cmd_buf, &rect[0], 0, text_col, name);
+
+        struct nb_color txtc = nb_color_from_int(NB_THEME_WIN_TITLE_TXT_COLOR);
+        float col[4];
+        col[0] = txtc.r;
+        col[1] = txtc.g;
+        col[2] = txtc.b;
+        col[3] = txtc.a;
+
+        nbr_text(ctx->rdr_ctx, window->cmd_buf, &rect[0], 0, col, name);
         
         return (void*)window;
 }
