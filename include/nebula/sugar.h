@@ -112,6 +112,8 @@ nbs_button(
 struct nb_window {
         uint64_t unique_id;
         int win_idx;
+        int cursor;
+        
         struct nb_rect rect;
 
         struct nbi_cmd_buf *cmd_buf;
@@ -180,14 +182,23 @@ nbi_hash_str(const char *name) {
 
 /* ---------------------------------------------------------- Window Style -- */
 
-
 #define NB_THEME_WIN_BG_COLD 0x393333FF
 #define NB_THEME_WIN_BG_HOVER 0x3C3C39FF
 #define NB_THEME_WIN_BG_DRAG 0x212321FF
 #define NB_THEME_WIN_CORNER_RADIUS 2.f
 #define NB_THEME_WIN_BORDER_SIZE 1
+#define NB_THEME_WIN_PADDING 5
+#define NB_THEME_WIN_PADDING_ELE 5
 #define NB_THEME_WIN_BORDER_COLOR 0x555555FF
 #define NB_THEME_WIN_TITLE_TXT_COLOR 0xEEEEEEFF
+
+#define NB_THEME_BUT_BG_COLD 0x333333FF
+#define NB_THEME_BUT_BG_HOVER 0x343434FF
+#define NB_THEME_BUT_BG_DOWN 0x252525FF
+#define NB_THEME_BUT_CORNER_RADIUS 2.f
+#define NB_THEME_BUT_BORDER_SIZE 1
+#define NB_THEME_BUT_BORDER_COLOR 0x666666FF
+#define NB_THEME_BUT_TXT_COLOR 0xEFEFEFFF
 
 
 /* -------------------------------------------------------- Window widgets -- */
@@ -338,12 +349,15 @@ nbs_window_begin(
         nbr_box(ctx->rdr_ctx, window->cmd_buf, wrect, bgcolor, b_rad);
         
         /* title */
-//        wrect.y += 10;
-
+        struct nb_rect trect = nb_rect_expand(wrect, -NB_THEME_WIN_PADDING);
         struct nb_color txtc = nb_color_from_int(NB_THEME_WIN_TITLE_TXT_COLOR);
-        nbr_scissor_set(window->cmd_buf, wrect);
-        nbr_text(ctx->rdr_ctx, window->cmd_buf, wrect, 0, txtc, name);
         
+        nbr_scissor_set(window->cmd_buf, trect);
+        nbr_text(ctx->rdr_ctx, window->cmd_buf, trect, 0, txtc, name);
+        
+        window->cursor = 30;
+        
+        /* return handle */
         return (void*)window;
 }
 
@@ -373,12 +387,20 @@ nbs_button(
 
         /* build some data */
         uint64_t hash_key = nbi_hash_str(name);
-
-        struct nb_rect rect = nb_rect_from_point_size(1, 1, 70, 30);
-        struct nb_color color = nb_color_from_int(0xFF00FFFF);
-
-        rect.x += win->rect.x;
-        rect.y += win->rect.y;
+        
+        float txt_size[2];
+        uint32_t txt_flags = NB_TEXT_ALIGN_CENTER;
+        nbr_get_text_size(ctx->rdr_ctx, win->rect.w, txt_flags, name, txt_size);
+        
+        struct nb_rect rect;
+        rect.x = win->rect.x + NB_THEME_WIN_PADDING;
+        rect.y = win->rect.y + win->cursor;
+        rect.w = win->rect.w - (NB_THEME_WIN_PADDING * 2);
+        rect.h = (int)txt_size[1];
+        
+        win->cursor += rect.h + NB_THEME_WIN_PADDING_ELE;
+        
+        uint32_t bgcol = NB_THEME_BUT_BG_COLD;
         
         /* collider */
         struct nb_collider_desc bcoll;
@@ -386,17 +408,41 @@ nbs_button(
         bcoll.unique_id = hash_key;
         bcoll.rect = &rect;
 
-        struct nb_interaction inter = {0};
+        struct nb_interaction inter;
         nbc_collider(ctx->core_ctx, &bcoll, &inter);
+        
+        if(inter.flags & NB_INTERACT_HOVER) {
+                bgcol = NB_THEME_BUT_BG_HOVER;
+        }
+        if(inter.flags & NB_INTERACT_DRAGGED) {
+                bgcol = NB_THEME_BUT_BG_DOWN;
+        }
+        if(inter.flags & NB_INTERACT_CLICKED) {
+                bgcol = NB_THEME_BUT_BG_DOWN;
+        }
+        
+        /* border */
+        float bo_rad = NB_THEME_BUT_CORNER_RADIUS + NB_THEME_BUT_BORDER_SIZE;
+        struct nb_color bocolor = nb_color_from_int(NB_THEME_BUT_BORDER_COLOR);
+        struct nb_rect nbrect = nb_rect_expand(rect, NB_THEME_BUT_BORDER_SIZE);
 
-        /* renderable */
-//        nbr_box(ctx->rdr_ctx, win->cmd_buf, rect, color, 8.0f);
+        nbr_scissor_set(win->cmd_buf, nbrect);
+        nbr_box(ctx->rdr_ctx, win->cmd_buf, nbrect, bocolor, bo_rad);
 
-        /* TEMP!! */
-//        float text_rect[4] = { (float)rect.x + 5.0f, (float)rect.y + 15.0f, (float)rect.w, (float)rect.h, };
-//        struct nb_color text_color = nb_color_from_int(0xFFFFFFFF);
-//        nbr_text(ctx->rdr_ctx, win->cmd_buf, text_rect, 0, (float *)&text_color, "HELLO");
-  
+        /* body */
+        float b_rad = NB_THEME_BUT_CORNER_RADIUS;
+        struct nb_color bgcolor = nb_color_from_int(bgcol);
+        
+        nbr_scissor_set(win->cmd_buf, rect);
+        nbr_box(ctx->rdr_ctx, win->cmd_buf, rect, bgcolor, b_rad);
+        
+        /* text */
+        struct nb_color txtc = nb_color_from_int(NB_THEME_BUT_TXT_COLOR);
+        
+        nbr_scissor_set(win->cmd_buf, rect);
+        nbr_text(ctx->rdr_ctx, win->cmd_buf, rect, txt_flags, txtc, name);
+
+
         if(inter.flags & NB_INTERACT_CLICKED) {
                 return 1;
         };

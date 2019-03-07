@@ -925,23 +925,21 @@ nbr_text_(
                         out_size[0] = 0.0f;
                         out_size[1] = font->height;
                 }
+                
                 return;
         }
 
         unsigned int wrap = flags & NBI_TEXT_FLAGS_WRAP;
         unsigned int term_tag = flags & NBI_TEXT_FLAGS_TERM;
 
-        struct nbi_text_out out = {
-                .font = font,
-
-                .start_x = (float)rect.x,
-                .end_x = (float)rect.x + (float)rect.w,
-                .max_x = (float)rect.x,
-                .x = (float)rect.x,
-                .y = (float)rect.y,
-
-                .align_type = flags & _NB_TEXT_ALIGN_BIT_MASK,
-        };
+        struct nbi_text_out out;
+        out.font = font;
+        out.start_x = (float)rect.x;
+        out.end_x = (float)rect.x + (float)rect.w;
+        out.max_x = (float)rect.x;
+        out.x = (float)rect.x;
+        out.y = (float)rect.y + font->height;
+        out.align_type = flags & _NB_TEXT_ALIGN_BIT_MASK;
 
         struct nbi_vtx_buf * data = 0;
         short vtx = 0;
@@ -1081,11 +1079,13 @@ nbr_text_(
 void
 nbr_get_text_size(
         struct nb_renderer_ctx * ctx,
-        float width, unsigned int flags,
+        float width,
+        unsigned int flags,
         const char * text,
         float * out_size)
 {
-        if(out_size) {
+        if(!ctx || !out_size) {
+                NB_ASSERT(!"Invalid params");
                 return;
         }
 
@@ -1111,12 +1111,6 @@ nbr_text(
 }
 
 
-short
-nbr_clamp_f32_to_i16(float x) {
-        return x < 32767.0f ? (x > -32768.0f ? (short)x : -32768) : 32767;
-}
-
-
 void
 nbr_scissor_set(
         struct nbi_cmd_buf * buf,
@@ -1136,7 +1130,8 @@ nbr_scissor_set(
 }
 
 
-void nbr_scissor_clear(struct nbi_cmd_buf * buf)
+void
+nbr_scissor_clear(struct nbi_cmd_buf * buf)
 {
         if(!buf) {
                 NB_ASSERT(!"No buffer");

@@ -426,7 +426,7 @@ nbc_collider(
                 struct nbi_collider *coll = 0;
                 coll = &ctx->colliders[i];
 
-                if(coll->index > desired_idx) {
+                if(coll->index >= desired_idx) {
                         insert_idx = i;
                         break;
                 }
