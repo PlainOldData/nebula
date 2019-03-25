@@ -182,6 +182,7 @@ nbi_hash_str(const char *name) {
 
 /* ---------------------------------------------------------- Window Style -- */
 
+
 #define NB_THEME_WIN_BG_COLD 0x393333FF
 #define NB_THEME_WIN_BG_HOVER 0x3C3C39FF
 #define NB_THEME_WIN_BG_DRAG 0x212321FF
