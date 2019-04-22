@@ -1169,6 +1169,11 @@ nb_get_render_data(
 
         for(i = 0; i < count; ++i) {
                 struct nbi_cmd_buf *cmd_buf = ctx->submited_cmds[i];
+                
+                if(!cmd_buf) {
+                        //assert(!"Bug");
+                        continue;
+                }
 
                 if (data->cmd_list_count >= NB_ARR_COUNT(data->cmd_lists)) {
                         NB_ASSERT(!"Cmd list array full!");
@@ -1222,8 +1227,8 @@ nbr_ctx_create(
 
         memset(new_ctx, 0, sizeof(*new_ctx));
 
-        new_ctx->vtx_buf.v = NB_ALLOC(65536 * sizeof(float));
-        new_ctx->vtx_buf.i = NB_ALLOC(65536 * sizeof(unsigned short));
+        new_ctx->vtx_buf.v = NB_ALLOC(65536 * sizeof(float) * 10);
+        new_ctx->vtx_buf.i = NB_ALLOC(65536 * sizeof(unsigned short) * 10);
 
         if(!new_ctx->vtx_buf.v || !new_ctx->vtx_buf.i) {
                 NB_ASSERT(!"NB_FAIL");
