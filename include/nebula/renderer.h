@@ -121,7 +121,7 @@ struct nb_renderer_ctx {
 
         struct nbi_cmd_buf *submited_cmds[256];
         int cmds_submit_count;
-        
+
         int width, height;
 };
 
@@ -925,14 +925,14 @@ nbr_text_(
                         out_size[0] = 0.0f;
                         out_size[1] = font->height;
                 }
-                
+
                 return;
         }
 
         unsigned int wrap = flags & NBI_TEXT_FLAGS_WRAP;
         unsigned int term_tag = flags & NBI_TEXT_FLAGS_TERM;
 
-        struct nbi_text_out out;
+        struct nbi_text_out out = { 0 };
         out.font = font;
         out.start_x = (float)rect.x;
         out.end_x = (float)rect.x + (float)rect.w;
@@ -1120,7 +1120,7 @@ nbr_scissor_set(
                 NB_ASSERT(!"No buffer");
                 return;
         }
-        
+
         struct nb_render_cmd *cmd = &buf->cmds[buf->cmd_count++];
         cmd->type = NB_RENDER_CMD_TYPE_SCISSOR;
         cmd->data.clip_rect[0] = rect.x;
@@ -1137,7 +1137,7 @@ nbr_scissor_clear(struct nbi_cmd_buf * buf)
                 NB_ASSERT(!"No buffer");
                 return;
         }
-        
+
         buf->cmds[buf->cmd_count++] = (struct nb_render_cmd) {
                 .type = NB_RENDER_CMD_TYPE_SCISSOR,
                 .data.clip_rect[0] = 0,
@@ -1169,7 +1169,7 @@ nb_get_render_data(
 
         for(i = 0; i < count; ++i) {
                 struct nbi_cmd_buf *cmd_buf = ctx->submited_cmds[i];
-                
+
                 if(!cmd_buf) {
                         //assert(!"Bug");
                         continue;
@@ -1367,7 +1367,7 @@ nbr_viewport_set(
 
         ctx->width = width;
         ctx->height = height;
-        
+
         return NB_OK;
 }
 
@@ -1381,15 +1381,15 @@ nbr_viewport_get(
         if(!ctx) {
                 return NB_INVALID_PARAMS;
         }
-        
+
         if(width) {
                 *width = ctx->width;
         }
-        
+
         if(height) {
                 *height = ctx->height;
         }
-        
+
         return NB_OK;
 }
 
