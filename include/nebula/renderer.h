@@ -76,7 +76,6 @@ struct nb_font_tex {
 struct nbi_font_range {
         unsigned int start;
         unsigned int end;
-        float height;
 };
 
 
@@ -88,6 +87,7 @@ struct nbi_font {
         unsigned int range_count;
 
         float height;
+        float ascent;
         float space_width;
 };
 
@@ -461,7 +461,6 @@ nbi_push_font_range(
         *range = (struct nbi_font_range) {
                 .start = start,
                 .end = end,
-                .height = height,
         };
 
         unsigned int char_count = range->end - range->start;
@@ -497,7 +496,17 @@ nbi_font_init(
 {
         font->tex.width = 512;
         font->tex.mem = NB_ALLOC(font->tex.width * font->tex.width);
+
+        stbtt_fontinfo info;
+        stbtt_InitFont(&info, ttf, 0);
+
+        int ascent, descent, line_gap;
+        stbtt_GetFontVMetrics(&info, &ascent, &descent, &line_gap);
+
+        float scale = stbtt_ScaleForPixelHeight(&info, height);
+
         font->height = height;
+        font->ascent = scale * (float)ascent;
 
         stbtt_pack_context stbtt;
         stbtt_PackBegin(&stbtt, font->tex.mem, font->tex.width, font->tex.width, font->tex.width, 1, 0);
@@ -938,7 +947,7 @@ nbr_text_(
         out.end_x = (float)rect.x + (float)rect.w;
         out.max_x = (float)rect.x;
         out.x = (float)rect.x;
-        out.y = (float)rect.y + font->height;
+        out.y = (float)rect.y + font->ascent;
         out.align_type = flags & _NB_TEXT_ALIGN_BIT_MASK;
 
         struct nbi_vtx_buf * data = 0;
@@ -1052,10 +1061,9 @@ nbr_text_(
                 if(buf) {
                         unsigned int cursor_on = 1;//((unsigned int)(buf->ctx->state.text_cursor_time * 2.0f) & 1) == 0;
                         if(cursor_on) {
-                                /* Font size is baked into these numbers */
                                 float cursor_rect[4] = {
-                                        out.x, out.y - 12.0f,
-                                        cursor_width, 15.0f,
+                                        out.x, out.y - font->ascent,
+                                        cursor_width, font->height,
                                 };
                                 vtx += nbi_push_quad(data, vtx, cursor_rect, color);
                         }
@@ -1068,7 +1076,7 @@ nbr_text_(
 
         if(out_size) {
                 out_size[0] = out.max_x - rect.x;
-                out_size[1] = out.y - rect.y;
+                out_size[1] = out.y - (rect.y + font->ascent);
         }
 
         if(data) {
