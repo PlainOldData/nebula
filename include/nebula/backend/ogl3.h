@@ -67,7 +67,7 @@ typedef char GLchar;
 typedef void GLvoid;
 typedef uintptr_t GLsizeiptr;
 #define APIENTRYP *
-#define glGetProcAddr wglGetProcAddress 
+#define glGetProcAddr wglGetProcAddress
 #endif
 
 #if defined(__linux__)
@@ -281,10 +281,10 @@ nbogl3_render(
                         -1,
                         "Nebula OGL Render");
         }
-        
+
         int vp_width, vp_height;
         nbr_viewport_get(nbr_ctx, &vp_width, &vp_height);
-        
+
         /* get nebula render data */
         struct nb_render_data rd;
         memset(&rd, 0, sizeof(rd));
@@ -300,7 +300,7 @@ nbogl3_render(
                 { 0.f, 0.f, -1.f, 0.f },
                 { -1.f, 1.f, 0.f, 1.f },
         };
-        
+
         proj[0][0] /= (GLfloat)vp_width;
         proj[1][1] /= (GLfloat)vp_height;
 
@@ -322,8 +322,8 @@ nbogl3_render(
         glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->ibo);
 
-        int vtx_size = sizeof(rd.vtx[0]) * rd.vtx_count;
-        int idx_size = sizeof(rd.idx[0]) * rd.idx_count;
+        nb_render_idx vtx_size = sizeof(rd.vtx[0]) * rd.vtx_count;
+        nb_render_idx idx_size = sizeof(rd.idx[0]) * rd.idx_count;
 
         glBufferData(GL_ARRAY_BUFFER, vtx_size, NULL, GL_STREAM_DRAW);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_size, NULL, GL_STREAM_DRAW);
@@ -339,6 +339,16 @@ nbogl3_render(
 
         glEnable(GL_SCISSOR_TEST);
         // glEnable(GL_DEPTH_TEST);
+
+#if NB_RENDER_INDEX_SIZE == 8
+        #define NB_OGL3_RENDER_INDEX_TYPE GL_UNSIGNED_BYTE
+#elif NB_RENDER_INDEX_SIZE == 16
+        #define NB_OGL3_RENDER_INDEX_TYPE GL_UNSIGNED_SHORT
+#elif NB_RENDER_INDEX_SIZE == 32
+        #define NB_OGL3_RENDER_INDEX_TYPE GL_UNSIGNED_INT
+#else
+        #error "NB_OGL3: Unsupported index size!"
+#endif
 
         /* render */
         unsigned int list_idx, i;
@@ -364,11 +374,11 @@ nbogl3_render(
                                         mode = GL_LINE_STRIP;
                                 }
 
-                                unsigned long offset = cmd->data.elem.offset * sizeof(unsigned short);
+                                unsigned long offset = cmd->data.elem.offset * sizeof(nb_render_idx);
                                 glDrawElements(
                                         mode,
                                         cmd->data.elem.count,
-                                        GL_UNSIGNED_SHORT,
+                                        NB_OGL3_RENDER_INDEX_TYPE,
                                         (void *)((uint64_t)offset));
                         }
                 }
@@ -507,7 +517,7 @@ nbogl3_ctx_create(
         glVertexAttribPointer = (PFNGVERTEXATTRIBPOINTERPROC)tmp;
 
         #endif
-        
+
         if(NEB_OGL3_DEBUG_SUPPORT) {
                 glPushDebugGroup(
                         GL_DEBUG_SOURCE_APPLICATION,
@@ -515,7 +525,7 @@ nbogl3_ctx_create(
                         -1,
                         "Nebula OGL Create");
         }
-        
+
         unsigned int font_count = nb_get_font_count(nbr_ctx);
         assert(font_count);
 
@@ -618,7 +628,7 @@ nbogl3_ctx_create(
 
         ptr = (void*)offsetof(struct vertex, color);
         glVertexAttribPointer(ctx->incol, 4, GL_FLOAT, GL_FALSE, stride, ptr);
-        
+
         if(NEB_OGL3_DEBUG_SUPPORT) {
                 glPopDebugGroup();
         }
@@ -645,7 +655,7 @@ nbogl3_ctx_destroy(
                         "Nebula OGL Destroy");
         }
 
-        
+
 
         if(NEB_OGL3_DEBUG_SUPPORT) {
                 glPopDebugGroup();

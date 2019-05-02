@@ -5,6 +5,25 @@
 #include <nebula/core.h>
 #include "stb_truetype.h"
 
+#ifndef NB_RENDER_INDEX_SIZE
+        #define NB_RENDER_INDEX_SIZE 16
+#endif
+
+#if NB_RENDER_INDEX_SIZE == 8
+        #define NB_VERTEX_COUNT_MAX 0xFF
+        typedef uint8_t nb_render_idx;
+#elif NB_RENDER_INDEX_SIZE == 16
+        #define NB_VERTEX_COUNT_MAX 0xFFFF
+        typedef uint16_t nb_render_idx;
+#elif NB_RENDER_INDEX_SIZE == 32
+        #define NB_VERTEX_COUNT_MAX 0xFFFFFFFF
+        typedef uint32_t nb_render_idx;
+#elif NB_RENDER_INDEX_SIZE == 64
+        #define NB_VERTEX_COUNT_MAX 0xFFFFFFFFFFFFFFFF
+        typedef uint64_t nb_render_idx;
+#else
+        #error "Nebula: NB_RENDER_INDEX_SIZE must be 8, 16 or 32 bytes!"
+#endif
 
 #define NB_FONT_COUNT_MAX 16
 #define NB_TAU 6.2831853071
@@ -51,11 +70,11 @@ struct nb_render_cmd_list {
 
 
 struct nb_render_data {
-        float * vtx;
-        unsigned int vtx_count;
+        float *vtx;
+        nb_render_idx vtx_count;
 
-        unsigned short * idx;
-        unsigned int idx_count;
+        nb_render_idx *idx;
+        nb_render_idx idx_count;
 
         struct nb_render_cmd_list cmd_lists[64];
         unsigned int cmd_list_count;
@@ -68,7 +87,7 @@ struct nb_render_data {
 
 
 struct nb_font_tex {
-        unsigned char * mem;
+        unsigned char *mem;
         unsigned int width;
 };
 
@@ -82,7 +101,7 @@ struct nbi_font_range {
 struct nbi_font {
         struct nb_font_tex tex;
 
-        stbtt_packedchar * range_data[NBI_FONT_RANGE_COUNT_MAX];
+        stbtt_packedchar *range_data[NBI_FONT_RANGE_COUNT_MAX];
         struct nbi_font_range ranges[NBI_FONT_RANGE_COUNT_MAX];
         unsigned int range_count;
 
@@ -93,13 +112,14 @@ struct nbi_font {
 
 
 struct nbi_vtx_buf {
-        float * v;
-        unsigned int v_count;
+        float *v;
+        nb_render_idx v_count;
 
-        unsigned short * i;
-        unsigned int i_count;
+        nb_render_idx *i;
+        nb_render_idx i_count;
+
+        nb_render_idx count_max;
 };
-
 
 struct nbi_cmd_buf {
         struct nb_render_cmd cmds[4096];
@@ -111,8 +131,8 @@ typedef struct nb_renderer_ctx * nbr_ctx_t;
 struct nb_renderer_ctx {
         struct nbi_font fonts[NB_FONT_COUNT_MAX];
         unsigned int font_count;
-        struct nbi_font * font;
-        struct nbi_font * debug_font_next;
+        struct nbi_font *font;
+        struct nbi_font *debug_font_next;
 
         struct nbi_vtx_buf vtx_buf;
 
@@ -568,10 +588,10 @@ nbi_push_vtx_uv(
 static void
 nbi_push_quad_idxs(
         struct nbi_vtx_buf * buf,
-        short top_lft,
-        short bot_lft,
-        short bot_rgt,
-        short top_rgt)
+        nb_render_idx top_lft,
+        nb_render_idx bot_lft,
+        nb_render_idx bot_rgt,
+        nb_render_idx top_rgt)
 {
         buf->i[buf->i_count++] = top_lft;
         buf->i[buf->i_count++] = bot_lft;
@@ -582,10 +602,10 @@ nbi_push_quad_idxs(
         buf->i[buf->i_count++] = top_rgt;
 }
 
-static int
+static nb_render_idx
 nbi_push_quad(
         struct nbi_vtx_buf * buf,
-        short vtx,
+        nb_render_idx vtx,
         float * rect,
         struct nb_color color)
 {
@@ -602,14 +622,14 @@ nbi_push_round_corner(
         struct nbi_vtx_buf * buf,
         float * pos,
         struct nb_color color,
-        short seg_count,
+        nb_render_idx seg_count,
         float radius, float angle)
 {
         NB_ASSERT(seg_count);
 
-        short i;
+        nb_render_idx i;
 
-        short vtx = (short)(buf->v_count / 8);
+        nb_render_idx vtx = (nb_render_idx)(buf->v_count / 8);
 
         for(i = 0; i < seg_count; i++) {
                 buf->i[buf->i_count++] = vtx;
@@ -703,10 +723,18 @@ nb_render_cmd_create(
                 return NB_INVALID_PARAMS;
         }
 
-        size_t i = ctx->cmds_count;
-        *out_cmd = &ctx->cmds[i];
+        struct nbi_cmd_buf *buf = 0;
 
-        ctx->cmds_count += 1;
+        int cmd_buf_count_max = sizeof(ctx->cmds) / sizeof(ctx->cmds[0]);
+        if(ctx->cmds_count < cmd_buf_count_max) {
+                int i = ctx->cmds_count++;
+                buf = ctx->cmds + i;
+        }
+        else {
+                assert(!"nb_render_cmd_create: cmds full!");
+        }
+
+        *out_cmd = buf;
 
         return NB_OK;
 }
@@ -717,14 +745,14 @@ nbi_cmd_begin(
         struct nbi_cmd_buf * buf,
         struct nbi_vtx_buf * data,
         unsigned int type,
-        short * vtx)
+        nb_render_idx * vtx)
 {
         struct nb_render_cmd * cmd = buf->cmds + buf->cmd_count++;
         cmd->type = type;
         cmd->data.elem.offset = data->i_count;
 
         if(vtx) {
-                *vtx = (short)(data->v_count / 8);
+                *vtx = (nb_render_idx)(data->v_count / 8);
         }
 
         return cmd;
@@ -753,7 +781,7 @@ nbr_box(
         struct nbi_vtx_buf * data = &ctx->vtx_buf;
 
         int prim = NB_RENDER_CMD_TYPE_TRIANGLES;
-        short vtx;
+        nb_render_idx vtx;
 
         struct nb_render_cmd * cmd = nbi_cmd_begin(buf, data, prim, &vtx);
 
@@ -769,12 +797,12 @@ nbr_box(
                 radius = extent_min;
         }
 
-        short seg_count = 7;
+        nb_render_idx seg_count = 7;
 
-        short cv0 = vtx;
-        short cv1 = vtx + (seg_count + 2);
-        short cv2 = vtx + (seg_count + 2) * 2;
-        short cv3 = vtx + (seg_count + 2) * 3;
+        nb_render_idx cv0 = vtx;
+        nb_render_idx cv1 = vtx + (seg_count + 2);
+        nb_render_idx cv2 = vtx + (seg_count + 2) * 2;
+        nb_render_idx cv3 = vtx + (seg_count + 2) * 3;
 
         nbi_push_quad_idxs(data, cv1 + 1, cv1, cv0, cv0 + (seg_count + 1));
         nbi_push_quad_idxs(data, cv2 + 1, cv2, cv1, cv1 + (seg_count + 1));
@@ -815,7 +843,7 @@ nbr_line(
 {
         struct nbi_vtx_buf * data = &ctx->vtx_buf;
 
-        short vtx;
+        nb_render_idx vtx;
         struct nb_render_cmd * cmd = nbi_cmd_begin(buf, data, NB_RENDER_CMD_TYPE_LINES, &vtx);
 
         data->i[data->i_count++] = vtx;
@@ -840,11 +868,11 @@ nbr_bez(
 {
         struct nbi_vtx_buf * data = &ctx->vtx_buf;
 
-        short vtx;
+        nb_render_idx vtx;
         struct nb_render_cmd * cmd = nbi_cmd_begin(buf, data, NB_RENDER_CMD_TYPE_LINES, &vtx);
 
-        short seg_count = 16;
-        short si, i;
+        nb_render_idx seg_count = 16;
+        nb_render_idx si, i;
 
         for(si = 0; si < seg_count; si++) {
                 data->i[data->i_count++] = vtx + si;
@@ -951,7 +979,7 @@ nbr_text_(
         out.align_type = flags & _NB_TEXT_ALIGN_BIT_MASK;
 
         struct nbi_vtx_buf * data = 0;
-        short vtx = 0;
+        nb_render_idx vtx = 0;
         struct nb_render_cmd * cmd = 0;
         if(buf) {
                 data = &ctx->vtx_buf;
@@ -1179,7 +1207,7 @@ nb_get_render_data(
                 struct nbi_cmd_buf *cmd_buf = ctx->submited_cmds[i];
 
                 if(!cmd_buf) {
-                        //assert(!"Bug");
+                        NB_ASSERT(!"Cmd buffer null!");
                         continue;
                 }
 
@@ -1235,8 +1263,13 @@ nbr_ctx_create(
 
         memset(new_ctx, 0, sizeof(*new_ctx));
 
-        new_ctx->vtx_buf.v = NB_ALLOC(65536 * sizeof(float) * 10);
-        new_ctx->vtx_buf.i = NB_ALLOC(65536 * sizeof(unsigned short) * 10);
+        new_ctx->vtx_buf.count_max = NB_VERTEX_COUNT_MAX;
+        if(sizeof(nb_render_idx) > 2) {
+                new_ctx->vtx_buf.count_max = 262144;
+        }
+
+        new_ctx->vtx_buf.v = NB_ALLOC(new_ctx->vtx_buf.count_max * sizeof(float));
+        new_ctx->vtx_buf.i = NB_ALLOC(new_ctx->vtx_buf.count_max * sizeof(nb_render_idx));
 
         if(!new_ctx->vtx_buf.v || !new_ctx->vtx_buf.i) {
                 NB_ASSERT(!"NB_FAIL");
@@ -1349,12 +1382,19 @@ nbr_frame_submit(
         }
 
         /* push cmds into queue */
+        int submit = 0;
         int i;
         for(i = 0; i < cmd_buf_count; ++i) {
-                ctx->submited_cmds[i] = cmd_bufs[i];
+                struct nbi_cmd_buf *buf = cmd_bufs[i];
+                if(buf) {
+                        ctx->submited_cmds[submit++] = buf;
+                }
+                else {
+                        NB_ASSERT(!"Trying to submit null cmd buffer!");
+                }
         }
 
-        ctx->cmds_submit_count = cmd_buf_count;
+        ctx->cmds_submit_count = submit;
 
         return NB_OK;
 }
