@@ -352,7 +352,7 @@ nbs_window_begin(
         struct nb_color txtc = nb_color_from_int(NB_THEME_WIN_TITLE_TXT_COLOR);
 
         nbr_scissor_set(window->cmd_buf, trect);
-        nbr_text(ctx->rdr_ctx, window->cmd_buf, trect, NBI_TEXT_FLAGS_CURSOR, txtc, name);
+        nbr_text(ctx->rdr_ctx, window->cmd_buf, trect, 0, txtc, name);
 
         nbr_scissor_clear(window->cmd_buf);
 
