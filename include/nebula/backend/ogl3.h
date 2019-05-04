@@ -288,9 +288,9 @@ nbogl3_render(
         nbr_viewport_get(nbr_ctx, &vp_width, &vp_height);
 
         /* get nebula render data */
-        struct nb_render_data rd;
+        struct nbr_draw_data rd;
         memset(&rd, 0, sizeof(rd));
-        nb_get_render_data(nbr_ctx, &rd);
+        nbr_get_draw_data(nbr_ctx, &rd);
 
         /* setup gl */
         glDisable(GL_DEPTH_TEST);
@@ -324,43 +324,32 @@ nbogl3_render(
         glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->ibo);
 
-        size_t vtx_size = sizeof(rd.vtx[0]) * rd.vtx_count;
-        size_t idx_size = sizeof(rd.idx[0]) * rd.idx_count;
-
-        glBufferData(GL_ARRAY_BUFFER, vtx_size, NULL, GL_STREAM_DRAW);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_size, NULL, GL_STREAM_DRAW);
-
-        void *vbo_data = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-        void *ibo_data = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
-
-        memcpy(vbo_data, (void*)rd.vtx, vtx_size);
-        memcpy(ibo_data, (void*)rd.idx, idx_size);
-
-        glUnmapBuffer(GL_ARRAY_BUFFER);
-        glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
-
         glEnable(GL_SCISSOR_TEST);
         // glEnable(GL_DEPTH_TEST);
 
-#if NB_RENDER_INDEX_SIZE == 8
-        #define NB_OGL3_RENDER_INDEX_TYPE GL_UNSIGNED_BYTE
-#elif NB_RENDER_INDEX_SIZE == 16
-        #define NB_OGL3_RENDER_INDEX_TYPE GL_UNSIGNED_SHORT
-#elif NB_RENDER_INDEX_SIZE == 32
-        #define NB_OGL3_RENDER_INDEX_TYPE GL_UNSIGNED_INT
+#if NBR_INDEX_SIZE == 8
+        #define NB_OGL3_INDEX_TYPE GL_UNSIGNED_BYTE
+#elif NBR_INDEX_SIZE == 16
+        #define NB_OGL3_INDEX_TYPE GL_UNSIGNED_SHORT
+#elif NBR_INDEX_SIZE == 32
+        #define NB_OGL3_INDEX_TYPE GL_UNSIGNED_INT
 #else
         #error "NB_OGL3: Unsupported index size!"
 #endif
 
         /* render */
-        unsigned int list_idx, i;
-        for (list_idx = 0; list_idx < rd.cmd_list_count; list_idx++) {
-                struct nb_render_cmd_list * cmd_list = rd.cmd_lists + list_idx;
+        unsigned int buf_idx, i;
+        for (buf_idx = 0; buf_idx < rd.cmd_buf_count; buf_idx++) {
+                struct nbr_cmd_buf *cmd_buf = rd.cmd_bufs[buf_idx];
 
-                for (i = 0; i < cmd_list->count; ++i) {
-                        struct nb_render_cmd * cmd = cmd_list->cmds + i;
+                struct nbr_vtx_buf *vtx_buf = &cmd_buf->vtx_buf;
+                glBufferData(GL_ARRAY_BUFFER, sizeof(struct nbr_vtx) * vtx_buf->v_count, vtx_buf->v, GL_STREAM_DRAW);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(nbr_idx) * vtx_buf->i_count, vtx_buf->i, GL_STREAM_DRAW);
 
-                        if (cmd->type == NB_RENDER_CMD_TYPE_SCISSOR) {
+                for (i = 0; i < cmd_buf->cmd_count; ++i) {
+                        struct nbr_cmd *cmd = cmd_buf->cmds + i;
+
+                        if (cmd->type == NBR_CMD_TYPE_SCISSOR) {
                                 int w = cmd->data.clip_rect[2];
                                 int h = cmd->data.clip_rect[3];
 
@@ -372,15 +361,15 @@ nbogl3_render(
                         else {
                                 GLenum mode = GL_TRIANGLES;
 
-                                if (cmd->type == NB_RENDER_CMD_TYPE_LINES) {
+                                if (cmd->type == NBR_CMD_TYPE_LINES) {
                                         mode = GL_LINE_STRIP;
                                 }
 
-                                size_t offset = cmd->data.elem.offset * sizeof(nb_render_idx);
+                                size_t offset = cmd->data.elem.offset * sizeof(nbr_idx);
                                 glDrawElements(
                                         mode,
                                         cmd->data.elem.count,
-                                        NB_OGL3_RENDER_INDEX_TYPE,
+                                        NB_OGL3_INDEX_TYPE,
                                         (void *)((uint64_t)offset));
                         }
                 }
