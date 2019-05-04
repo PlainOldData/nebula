@@ -46,26 +46,26 @@ typedef enum nb_render_cmd_type {
 
 
 struct nb_render_elem {
-        unsigned int offset;
-        unsigned int count;
+        uint32_t offset;
+        uint32_t count;
 };
 
 
 union nb_render_cmd_data {
         struct nb_render_elem elem;
-        int clip_rect[4];
+        uint16_t clip_rect[4];
 };
 
 
 struct nb_render_cmd {
-        unsigned int type;
+        uint32_t type;
         union nb_render_cmd_data data;
 };
 
 
 struct nb_render_cmd_list {
-        struct nb_render_cmd * cmds;
-        unsigned int count;
+        struct nb_render_cmd *cmds;
+        uint32_t count;
 };
 
 
@@ -77,7 +77,7 @@ struct nb_render_data {
         nb_render_idx idx_count;
 
         struct nb_render_cmd_list cmd_lists[64];
-        unsigned int cmd_list_count;
+        uint32_t cmd_list_count;
 };
 
 
@@ -121,7 +121,7 @@ struct nbi_vtx_buf {
         nb_render_idx count_max;
 };
 
-struct nbi_cmd_buf {
+struct nbr_cmd_buf {
         struct nb_render_cmd cmds[4096];
         unsigned int cmd_count;
 };
@@ -136,10 +136,10 @@ struct nb_renderer_ctx {
 
         struct nbi_vtx_buf vtx_buf;
 
-        struct nbi_cmd_buf cmds[256];
+        struct nbr_cmd_buf cmds[256];
         int cmds_count;
 
-        struct nbi_cmd_buf *submited_cmds[256];
+        struct nbr_cmd_buf *submited_cmds[256];
         int cmds_submit_count;
 
         int width, height;
@@ -175,8 +175,8 @@ nbr_frame_begin(
  */
 nb_result
 nbr_frame_submit(
-        struct nb_renderer_ctx * ctx,       /* required */
-        struct nbi_cmd_buf ** cmd_bufs,     /* optional - null renders nothing */
+        struct nb_renderer_ctx *ctx,        /* required */
+        struct nbr_cmd_buf **cmd_bufs,      /* optional - null renders nothing */
         int cmd_buf_count);                 /* 0 renders nothing */
 
 
@@ -206,7 +206,7 @@ unsigned int
 nb_debug_get_font(
         struct nb_renderer_ctx *ctx);
 
-
+#if 0
 void
 nbi_push_font_range(
         struct nbi_font * font,
@@ -228,15 +228,16 @@ nbi_font_init(
         struct nbi_font * font,
         unsigned char * ttf,
         float height);
+#endif
 
 
 /* ------------------------------------------------------- Render Commands -- */
 
 
 nb_result
-nb_render_cmd_create(
-        struct nb_renderer_ctx * ctx,       /* required */
-        struct nbi_cmd_buf ** out_cmd);     /* required */
+nbr_cmd_buf_create(
+        struct nb_renderer_ctx *ctx,       /* required */
+        struct nbr_cmd_buf **out_buf);     /* required */
 
 
 /*
@@ -248,22 +249,22 @@ nb_render_cmd_create(
 nb_result
 nb_get_render_data(
         struct nb_renderer_ctx *ctx,        /* required */
-        struct nb_render_data * data);      /* required */
+        struct nb_render_data *data);      /* required */
 
 
 void
 nbr_box(
         struct nb_renderer_ctx *ctx,        /* required */
-        struct nbi_cmd_buf * buf,           /* required */
+        struct nbr_cmd_buf *buf,           /* required */
         struct nb_rect rect,
         struct nb_color color,
-        float radius);
+        int radius);
 
 
 void
 nbr_line(
         struct nb_renderer_ctx *ctx,
-        struct nbi_cmd_buf * buf,
+        struct nbr_cmd_buf * buf,
         float * p,
         float * q,
         struct nb_color color);
@@ -272,7 +273,7 @@ nbr_line(
 void
 nbr_bez(
         struct nb_renderer_ctx *ctx,
-        struct nbi_cmd_buf * buf,
+        struct nbr_cmd_buf * buf,
         float * p0,
         float * p1,
         float * p2,
@@ -299,7 +300,7 @@ nbr_get_text_size(
 void
 nbr_text(
         struct nb_renderer_ctx * ctx,
-        struct nbi_cmd_buf * buf,
+        struct nbr_cmd_buf * buf,
         struct nb_rect pos,
         unsigned int flags,
         struct nb_color color,
@@ -308,13 +309,13 @@ nbr_text(
 
 void
 nbr_scissor_set(
-        struct nbi_cmd_buf * buf,
+        struct nbr_cmd_buf * buf,
         struct nb_rect rect);
 
 
 void
 nbr_scissor_clear(
-        struct nbi_cmd_buf * buf);
+        struct nbr_cmd_buf * buf);
 
 
 unsigned int
@@ -410,12 +411,30 @@ nbr_viewport_get(
 
 
 unsigned int
+nbi_get_font_range_idx(
+        struct nbi_font * font,
+        unsigned int cp)
+{
+        unsigned int result = font->range_count;
+        unsigned int i;
+
+        for(i = 0; i < font->range_count; i++) {
+                struct nbi_font_range * range = font->ranges + i;
+                if(cp >= range->start && cp < range->end) {
+                        result = i;
+                        break;
+                }
+        }
+        return result;
+}
+
+
+unsigned int
 nbi_char_valid(struct nbi_font * font, unsigned int cp) {
         unsigned int range_idx = nbi_get_font_range_idx(font, cp);
         unsigned int result = range_idx < font->range_count ? 1 : 0;
         return result;
 }
-
 
 
 void
@@ -469,49 +488,33 @@ nb_debug_get_font(
 
 void
 nbi_push_font_range(
-        struct nbi_font * font,
-        stbtt_pack_context * stbtt,
-        unsigned char * ttf,
+        struct nbi_font *font,
+        stbtt_pack_context *stbtt,
+        unsigned char *ttf,
         unsigned int start,
         unsigned int end,
         float height)
 {
-        unsigned int idx = font->range_count++;
-        struct nbi_font_range * range = font->ranges + idx;
-        *range = (struct nbi_font_range) {
-                .start = start,
-                .end = end,
-        };
+        if(font->range_count < NB_ARR_COUNT(font->ranges)) {
+                uint32_t idx = font->range_count++;
+                struct nbi_font_range *range = font->ranges + idx;
+                range->start = start;
+                range->end = end;
 
-        unsigned int char_count = range->end - range->start;
-        font->range_data[idx] = NB_ALLOC(sizeof(stbtt_packedchar) * char_count);
-        stbtt_PackFontRange(stbtt, ttf, 0, height, range->start, char_count, font->range_data[idx]);
-}
-
-
-unsigned int
-nbi_get_font_range_idx(
-        struct nbi_font * font,
-        unsigned int cp)
-{
-        unsigned int result = font->range_count;
-        unsigned int i;
-
-        for(i = 0; i < font->range_count; i++) {
-                struct nbi_font_range * range = font->ranges + i;
-                if(cp >= range->start && cp < range->end) {
-                        result = i;
-                        break;
-                }
+                uint32_t char_count = range->end - range->start;
+                font->range_data[idx] = NB_ALLOC(sizeof(stbtt_packedchar) * char_count);
+                stbtt_PackFontRange(stbtt, ttf, 0, height, range->start, char_count, font->range_data[idx]);
         }
-        return result;
+        else {
+                NB_ASSERT(!"nbi_push_font_range: font full!");
+        }
 }
 
 
 void
 nbi_font_init(
-        struct nbi_font * font,
-        unsigned char * ttf,
+        struct nbi_font *font,
+        unsigned char *ttf,
         float height)
 {
         font->tex.width = 512;
@@ -547,66 +550,81 @@ nbi_font_init(
 
 static void
 nbi_push_vtx(
-        struct nbi_vtx_buf * buf,
+        struct nbi_vtx_buf *buf,
         float x,
         float y,
         struct nb_color color)
 {
-        buf->v[buf->v_count++] = x;
-        buf->v[buf->v_count++] = y;
+        if((buf->v_count + 8) <= buf->count_max) {
+                buf->v[buf->v_count++] = x;
+                buf->v[buf->v_count++] = y;
 
-        buf->v[buf->v_count++] = 0.0f;
-        buf->v[buf->v_count++] = 0.0f;
+                buf->v[buf->v_count++] = 0.0f;
+                buf->v[buf->v_count++] = 0.0f;
 
-        buf->v[buf->v_count++] = color.r;
-        buf->v[buf->v_count++] = color.g;
-        buf->v[buf->v_count++] = color.b;
-        buf->v[buf->v_count++] = color.a;
+                buf->v[buf->v_count++] = color.r;
+                buf->v[buf->v_count++] = color.g;
+                buf->v[buf->v_count++] = color.b;
+                buf->v[buf->v_count++] = color.a;
+        }
+        else {
+                NB_ASSERT(!"nbi_push_vtx_uv: vtx buf full!");
+        }
 }
 
 static void
 nbi_push_vtx_uv(
-        struct nbi_vtx_buf * buf,
+        struct nbi_vtx_buf *buf,
         float x,
         float y,
         float u,
         float v,
         struct nb_color color)
 {
-        buf->v[buf->v_count++] = x;
-        buf->v[buf->v_count++] = y;
+        if((buf->v_count + 8) <= buf->count_max) {
+                buf->v[buf->v_count++] = x;
+                buf->v[buf->v_count++] = y;
 
-        buf->v[buf->v_count++] = u;
-        buf->v[buf->v_count++] = v;
+                buf->v[buf->v_count++] = u;
+                buf->v[buf->v_count++] = v;
 
-        buf->v[buf->v_count++] = color.r;
-        buf->v[buf->v_count++] = color.g;
-        buf->v[buf->v_count++] = color.b;
-        buf->v[buf->v_count++] = color.a;
+                buf->v[buf->v_count++] = color.r;
+                buf->v[buf->v_count++] = color.g;
+                buf->v[buf->v_count++] = color.b;
+                buf->v[buf->v_count++] = color.a;
+        }
+        else {
+                NB_ASSERT(!"nbi_push_vtx_uv: vtx buf full!");
+        }
 }
 
 static void
 nbi_push_quad_idxs(
-        struct nbi_vtx_buf * buf,
+        struct nbi_vtx_buf *buf,
         nb_render_idx top_lft,
         nb_render_idx bot_lft,
         nb_render_idx bot_rgt,
         nb_render_idx top_rgt)
 {
-        buf->i[buf->i_count++] = top_lft;
-        buf->i[buf->i_count++] = bot_lft;
-        buf->i[buf->i_count++] = bot_rgt;
+        if((buf->i_count + 6) <= buf->count_max) {
+                buf->i[buf->i_count++] = top_lft;
+                buf->i[buf->i_count++] = bot_lft;
+                buf->i[buf->i_count++] = bot_rgt;
 
-        buf->i[buf->i_count++] = top_lft;
-        buf->i[buf->i_count++] = bot_rgt;
-        buf->i[buf->i_count++] = top_rgt;
+                buf->i[buf->i_count++] = top_lft;
+                buf->i[buf->i_count++] = bot_rgt;
+                buf->i[buf->i_count++] = top_rgt;
+        }
+        else {
+                NB_ASSERT(!"nbi_push_quad_idxs: vtx buf full!");
+        }
 }
 
 static nb_render_idx
 nbi_push_quad(
-        struct nbi_vtx_buf * buf,
+        struct nbi_vtx_buf *buf,
         nb_render_idx vtx,
-        float * rect,
+        float *rect,
         struct nb_color color)
 {
         nbi_push_quad_idxs(buf, vtx, vtx + 1, vtx + 2, vtx + 3);
@@ -617,38 +635,49 @@ nbi_push_quad(
         return 4;
 }
 
-static int
+static uint32_t
 nbi_push_round_corner(
-        struct nbi_vtx_buf * buf,
-        float * pos,
+        struct nbi_vtx_buf *buf,
+        float px,
+        float py,
         struct nb_color color,
         nb_render_idx seg_count,
-        float radius, float angle)
+        int radius, float angle)
 {
-        NB_ASSERT(seg_count);
+        uint32_t result = 0;
+        if((buf->i_count + (seg_count * 3)) <= buf->count_max) {
+                if(seg_count) {
+                        nb_render_idx i;
 
-        nb_render_idx i;
+                        nb_render_idx vtx = (nb_render_idx)(buf->v_count / 8);
 
-        nb_render_idx vtx = (nb_render_idx)(buf->v_count / 8);
+                        for(i = 0; i < seg_count; i++) {
+                                buf->i[buf->i_count++] = vtx;
+                                buf->i[buf->i_count++] = vtx + (i + 1);
+                                buf->i[buf->i_count++] = vtx + (i + 2);
+                        }
 
-        for(i = 0; i < seg_count; i++) {
-                buf->i[buf->i_count++] = vtx;
-                buf->i[buf->i_count++] = vtx + (i + 1);
-                buf->i[buf->i_count++] = vtx + (i + 2);
+                        nbi_push_vtx(buf, px, py, color);
+
+                        float d_angle = ((float)NB_TAU * 0.25f) / (float)seg_count;
+
+                        for(i = 0; i < (seg_count + 1); i++) {
+                                float t = angle + d_angle * (float)i;
+                                float x = px + cosf(t) * radius;
+                                float y = py - sinf(t) * radius;
+                                nbi_push_vtx(buf, x, y, color);
+                        }
+
+                        result = seg_count + 2;
+                }
+                else {
+                        NB_ASSERT(!"nbi_push_round_corner: trying to push a corner with no segments!");
+                }
         }
-
-        nbi_push_vtx(buf, pos[0], pos[1], color);
-
-        float d_angle = ((float)NB_TAU * 0.25f) / (float)seg_count;
-
-        for(i = 0; i < (seg_count + 1); i++) {
-                float t = angle + d_angle * (float)i;
-                float x = pos[0] + cosf(t) * radius;
-                float y = pos[1] - sinf(t) * radius;
-                nbi_push_vtx(buf, x, y, color);
+        else {
+                NB_ASSERT(!"nbi_push_round_corner: vtx buf full!");
         }
-
-        return seg_count + 2;
+        return result;
 }
 
 
@@ -677,17 +706,17 @@ nb_get_font_tex_list(
 }
 
 
-static unsigned int
+static uint32_t
 nbi_decode_utf8_cp(
-        char * utf8,
-        unsigned int * cp)
+        char *utf8,
+        uint32_t *cp)
 {
         *cp = 0;
 
-        unsigned char * it = (unsigned char *)utf8;
-        unsigned char byte = *it++;
+        uint8_t *it = (uint8_t *)utf8;
+        uint8_t byte = *it++;
         if((byte & 0x80) == 0) {
-                *cp = (unsigned int)byte;
+                *cp = (uint32_t)byte;
         }
         else if((byte & 0xE0) == 0xC0) {
                 *cp =  (byte  & 0x1F) << 6;
@@ -705,7 +734,7 @@ nbi_decode_utf8_cp(
                 *cp |= (*it++ & 0x3F);
         }
 
-        unsigned int result = (unsigned int)((char *)it - utf8);
+        uint32_t result = (uint32_t)((char *)it - utf8);
         return result;
 }
 
@@ -714,16 +743,16 @@ nbi_decode_utf8_cp(
 
 
 nb_result
-nb_render_cmd_create(
-        struct nb_renderer_ctx * ctx,
-        struct nbi_cmd_buf ** out_cmd)
+nbr_cmd_buf_create(
+        struct nb_renderer_ctx *ctx,
+        struct nbr_cmd_buf **out_buf)
 {
-        if(!ctx || !out_cmd) {
+        if(!ctx || !out_buf) {
                 NB_ASSERT(!"NB_INVALID_PARAMS");
                 return NB_INVALID_PARAMS;
         }
 
-        struct nbi_cmd_buf *buf = 0;
+        struct nbr_cmd_buf *buf = 0;
 
         int cmd_buf_count_max = sizeof(ctx->cmds) / sizeof(ctx->cmds[0]);
         if(ctx->cmds_count < cmd_buf_count_max) {
@@ -731,112 +760,137 @@ nb_render_cmd_create(
                 buf = ctx->cmds + i;
         }
         else {
-                assert(!"nb_render_cmd_create: cmds full!");
+                NB_ASSERT(!"nbr_cmd_buf_create: cmds full!");
         }
 
-        *out_cmd = buf;
+        *out_buf = buf;
 
         return NB_OK;
+}
+
+static struct nb_render_cmd *
+nbi_cmd_push(struct nbr_cmd_buf *buf) {
+        struct nb_render_cmd *result = 0;
+        if(buf) {
+                if(buf->cmd_count < NB_ARR_COUNT(buf->cmds)) {
+                        result = buf->cmds + buf->cmd_count++;
+                        struct nb_render_cmd empty_cmd = { 0 };
+                        *result = empty_cmd;
+                }
+                else {
+                        NB_ASSERT(!"nbi_cmd_push: cmd buf full!");
+                }
+        }
+        else {
+                NB_ASSERT(!"nbi_cmd_push: cmd buf is null!");
+        }
+        return result;
 }
 
 
 static struct nb_render_cmd *
 nbi_cmd_begin(
-        struct nbi_cmd_buf * buf,
+        struct nbr_cmd_buf * buf,
         struct nbi_vtx_buf * data,
         unsigned int type,
         nb_render_idx * vtx)
 {
-        struct nb_render_cmd * cmd = buf->cmds + buf->cmd_count++;
-        cmd->type = type;
-        cmd->data.elem.offset = data->i_count;
+        struct nb_render_cmd *result = nbi_cmd_push(buf);
+        if(result) {
+                result->type = type;
+                result->data.elem.offset = data->i_count;
 
-        if(vtx) {
-                *vtx = (nb_render_idx)(data->v_count / 8);
+                if(vtx) {
+                        *vtx = (nb_render_idx)(data->v_count / 8);
+                }
         }
-
-        return cmd;
+        return result;
 }
 
 static void
-nbi_cmd_end(struct nbi_vtx_buf * data, struct nb_render_cmd * cmd) {
+nbi_cmd_end(struct nbi_vtx_buf *data, struct nb_render_cmd *cmd) {
         if(cmd) {
-                cmd->data.elem.count = data->i_count - cmd->data.elem.offset;
+                if(data) {
+                        cmd->data.elem.count = data->i_count - cmd->data.elem.offset;
+                }
+                else {
+                        NB_ASSERT(!"nbi_cmd_end: data cannot be null!");
+                }
         }
 }
 
 
 void
 nbr_box(
-        struct nb_renderer_ctx * ctx,
-        struct nbi_cmd_buf * buf,
+        struct nb_renderer_ctx *ctx,
+        struct nbr_cmd_buf *buf,
         struct nb_rect rec,
         struct nb_color color,
-        float radius)
+        int radius)
 {
+        struct nbi_vtx_buf *data = &ctx->vtx_buf;
+
+        nb_render_idx vtx;
+        struct nb_render_cmd *cmd = nbi_cmd_begin(buf, data, NB_RENDER_CMD_TYPE_TRIANGLES, &vtx);
+
         float rect[4];
         rect[0] = (float)rec.x; rect[1] = (float)rec.y;
         rect[2] = (float)rec.w; rect[3] = (float)rec.h;
 
-        struct nbi_vtx_buf * data = &ctx->vtx_buf;
+        int extent_min = (rec.w < rec.h ? rec.w : rec.h) / 2;
+        if(radius > extent_min) {
+                radius = extent_min;
+        }
 
-        int prim = NB_RENDER_CMD_TYPE_TRIANGLES;
-        nb_render_idx vtx;
-
-        struct nb_render_cmd * cmd = nbi_cmd_begin(buf, data, prim, &vtx);
+        nb_render_idx subdivs = radius >= 1 ? (nb_render_idx)radius : 0;
+        if(subdivs > 7) {
+                subdivs = 7;
+        }
 
         /* sharp corners - shortcut */
-        if(radius <= 0.0f) {
+        if(!subdivs) {
                 nbi_push_quad(data, vtx, rect, color);
                 nbi_cmd_end(data, cmd);
                 return;
         }
 
-        float extent_min = (rect[2] < rect[3] ? rect[2] : rect[3]) * 0.5f;
-        if(radius > extent_min) {
-                radius = extent_min;
-        }
-
-        nb_render_idx seg_count = 7;
-
         nb_render_idx cv0 = vtx;
-        nb_render_idx cv1 = vtx + (seg_count + 2);
-        nb_render_idx cv2 = vtx + (seg_count + 2) * 2;
-        nb_render_idx cv3 = vtx + (seg_count + 2) * 3;
+        nb_render_idx cv1 = vtx + (subdivs + 2);
+        nb_render_idx cv2 = vtx + (subdivs + 2) * 2;
+        nb_render_idx cv3 = vtx + (subdivs + 2) * 3;
 
-        nbi_push_quad_idxs(data, cv1 + 1, cv1, cv0, cv0 + (seg_count + 1));
-        nbi_push_quad_idxs(data, cv2 + 1, cv2, cv1, cv1 + (seg_count + 1));
-        nbi_push_quad_idxs(data, cv3 + 1, cv3, cv2, cv2 + (seg_count + 1));
-        nbi_push_quad_idxs(data, cv0 + 1, cv0, cv3, cv3 + (seg_count + 1));
+        nbi_push_quad_idxs(data, cv1 + 1, cv1, cv0, cv0 + (subdivs + 1));
+        nbi_push_quad_idxs(data, cv2 + 1, cv2, cv1, cv1 + (subdivs + 1));
+        nbi_push_quad_idxs(data, cv3 + 1, cv3, cv2, cv2 + (subdivs + 1));
+        nbi_push_quad_idxs(data, cv0 + 1, cv0, cv3, cv3 + (subdivs + 1));
         nbi_push_quad_idxs(data, cv1, cv2, cv3, cv0);
 
-        float c0[2] = { rect[0] + rect[2] - radius, rect[1] + radius, };
-        float ang = NB_TAU * 0.f;
-        nbi_push_round_corner(data, c0, color, seg_count, radius, ang);
+        float cx, cy;
 
-        float c1[2] = { rect[0] + radius, rect[1] + radius, };
-        ang = NB_TAU * 0.25f;
-        nbi_push_round_corner(data, c1, color, seg_count, radius, ang);
+        cx = rect[0] + rect[2] - (float)radius;
+        cy = rect[1] + (float)radius;
+        nbi_push_round_corner(data, cx, cy, color, subdivs, radius, NB_TAU);
 
-        float c2[2] = { rect[0] + radius, rect[1] + rect[3] - radius, };
-        ang = NB_TAU * 0.50f;
-        nbi_push_round_corner(data, c2, color, seg_count, radius, ang);
+        cx = rect[0] + (float)radius;
+        cy = rect[1] + (float)radius;
+        nbi_push_round_corner(data, cx, cy, color, subdivs, radius, NB_TAU * 0.25f);
 
-        float c3[2] = { rect[0] + rect[2] - radius, rect[1] + rect[3] - radius, };
-        ang = NB_TAU * 0.75f;
-        nbi_push_round_corner(data, c3, color, seg_count, radius, ang);
+        cx = rect[0] + (float)radius;
+        cy = rect[1] + rect[3] - (float)radius;
+        nbi_push_round_corner(data, cx, cy, color, subdivs, radius, NB_TAU * 0.5f);
+
+        cx = rect[0] + rect[2] - (float)radius;
+        cy = rect[1] + rect[3] - (float)radius;
+        nbi_push_round_corner(data, cx, cy, color, subdivs, radius, NB_TAU * 0.75f);
 
         nbi_cmd_end(data, cmd);
-
-        /* err */
-        ctx->cmds_count += 1;
 }
 
 
 void
 nbr_line(
         struct nb_renderer_ctx *ctx,
-        struct nbi_cmd_buf * buf,
+        struct nbr_cmd_buf * buf,
         float * p,
         float * q,
         struct nb_color color)
@@ -859,7 +913,7 @@ nbr_line(
 void
 nbr_bez(
         struct nb_renderer_ctx *ctx,
-        struct nbi_cmd_buf * buf,
+        struct nbr_cmd_buf * buf,
         float * p0,
         float * p1,
         float * p2,
@@ -940,7 +994,6 @@ nbi_line_adv(struct nbi_vtx_buf * buf, struct nbi_text_out * out) {
         }
 
         out->x = out->start_x;
-        /* Use actual font metrics to do vertical advance!! */
         out->y += out->font->height;
         out->space = 0.0f;
 }
@@ -949,7 +1002,7 @@ nbi_line_adv(struct nbi_vtx_buf * buf, struct nbi_text_out * out) {
 void
 nbr_text_(
         struct nb_renderer_ctx * ctx,
-        struct nbi_cmd_buf * buf,
+        struct nbr_cmd_buf * buf,
         struct nbi_font * font,
         struct nb_rect rect,
         unsigned int flags,
@@ -1089,10 +1142,11 @@ nbr_text_(
                 if(buf) {
                         unsigned int cursor_on = 1;//((unsigned int)(buf->ctx->state.text_cursor_time * 2.0f) & 1) == 0;
                         if(cursor_on) {
-                                float cursor_rect[4] = {
-                                        out.x, out.y - font->ascent,
-                                        cursor_width, font->height,
-                                };
+                                float cursor_rect[4];
+                                cursor_rect[0] = out.x;
+                                cursor_rect[1] = out.y - font->ascent;
+                                cursor_rect[2] = cursor_width;
+                                cursor_rect[3] = font->height;
                                 vtx += nbi_push_quad(data, vtx, cursor_rect, color);
                         }
                 }
@@ -1136,7 +1190,7 @@ nbr_get_text_size(
 void
 nbr_text(
         struct nb_renderer_ctx * ctx,
-        struct nbi_cmd_buf * buf,
+        struct nbr_cmd_buf * buf,
         struct nb_rect rect,
         unsigned int flags,
         struct nb_color color,
@@ -1149,38 +1203,30 @@ nbr_text(
 
 void
 nbr_scissor_set(
-        struct nbi_cmd_buf * buf,
+        struct nbr_cmd_buf *buf,
         struct nb_rect rect)
 {
-        if(!buf) {
-                NB_ASSERT(!"No buffer");
-                return;
+        struct nb_render_cmd *cmd = nbi_cmd_push(buf);
+        if(cmd) {
+                cmd->type = NB_RENDER_CMD_TYPE_SCISSOR;
+                cmd->data.clip_rect[0] = (uint16_t)rect.x;
+                cmd->data.clip_rect[1] = (uint16_t)rect.y;
+                cmd->data.clip_rect[2] = (uint16_t)rect.w;
+                cmd->data.clip_rect[3] = (uint16_t)rect.h;
         }
-
-        struct nb_render_cmd *cmd = &buf->cmds[buf->cmd_count++];
-        cmd->type = NB_RENDER_CMD_TYPE_SCISSOR;
-        cmd->data.clip_rect[0] = rect.x;
-        cmd->data.clip_rect[1] = rect.y;
-        cmd->data.clip_rect[2] = rect.w;
-        cmd->data.clip_rect[3] = rect.h;
 }
 
 
 void
-nbr_scissor_clear(struct nbi_cmd_buf * buf)
-{
-        if(!buf) {
-                NB_ASSERT(!"No buffer");
-                return;
+nbr_scissor_clear(struct nbr_cmd_buf *buf) {
+        struct nb_render_cmd *cmd = nbi_cmd_push(buf);
+        if(cmd) {
+                cmd->type = NB_RENDER_CMD_TYPE_SCISSOR;
+                cmd->data.clip_rect[0] = 0;
+                cmd->data.clip_rect[1] = 0;
+                cmd->data.clip_rect[2] = 0x7FFF;
+                cmd->data.clip_rect[3] = 0x7FFF;
         }
-
-        buf->cmds[buf->cmd_count++] = (struct nb_render_cmd) {
-                .type = NB_RENDER_CMD_TYPE_SCISSOR,
-                .data.clip_rect[0] = 0,
-                .data.clip_rect[1] = 0,
-                .data.clip_rect[2] = 0x7FFF,
-                .data.clip_rect[3] = 0x7FFF,
-        };
 }
 
 
@@ -1204,7 +1250,7 @@ nb_get_render_data(
         unsigned int i;
 
         for(i = 0; i < count; ++i) {
-                struct nbi_cmd_buf *cmd_buf = ctx->submited_cmds[i];
+                struct nbr_cmd_buf *cmd_buf = ctx->submited_cmds[i];
 
                 if(!cmd_buf) {
                         NB_ASSERT(!"Cmd buffer null!");
@@ -1263,10 +1309,11 @@ nbr_ctx_create(
 
         memset(new_ctx, 0, sizeof(*new_ctx));
 
+#if NB_RENDER_INDEX_SIZE < 32
         new_ctx->vtx_buf.count_max = NB_VERTEX_COUNT_MAX;
-        if(sizeof(nb_render_idx) > 2) {
-                new_ctx->vtx_buf.count_max = 262144;
-        }
+#else
+        new_ctx->vtx_buf.count_max = 262144;
+#endif
 
         new_ctx->vtx_buf.v = NB_ALLOC(new_ctx->vtx_buf.count_max * sizeof(float));
         new_ctx->vtx_buf.i = NB_ALLOC(new_ctx->vtx_buf.count_max * sizeof(nb_render_idx));
@@ -1362,7 +1409,7 @@ nbr_frame_begin(
 nb_result
 nbr_frame_submit(
         struct nb_renderer_ctx * ctx,
-        struct nbi_cmd_buf ** cmd_bufs,
+        struct nbr_cmd_buf ** cmd_bufs,
         int cmd_buf_count)
 {
         /* validate */
@@ -1385,7 +1432,7 @@ nbr_frame_submit(
         int submit = 0;
         int i;
         for(i = 0; i < cmd_buf_count; ++i) {
-                struct nbi_cmd_buf *buf = cmd_bufs[i];
+                struct nbr_cmd_buf *buf = cmd_bufs[i];
                 if(buf) {
                         ctx->submited_cmds[submit++] = buf;
                 }

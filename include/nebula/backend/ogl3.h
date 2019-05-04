@@ -57,7 +57,9 @@ nbogl3_render(
 
 
 #ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #undef near
 #undef far
 #include <windows.h>
@@ -116,7 +118,7 @@ typedef void (APIENTRYP PFNGLSHADERSOURCEPROC)(GLuint shd, GLsizei count, const 
 typedef void (APIENTRYP PFNGLUNIFORM1IPROC)(GLint loc, GLint v0);
 
 #ifndef __linux__
-typedef void (APIENTRYP PFNGLUNIFORMMATRIX4FVPROC)(GLint loc, GLsizei count, const GLfloat *val);
+typedef void (APIENTRYP PFNGLUNIFORMMATRIX4FVPROC)(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 #endif
 
 typedef GLboolean (APIENTRYP PFNGLUNMAPBUFFERPROC)(GLenum target);
@@ -322,8 +324,8 @@ nbogl3_render(
         glBindBuffer(GL_ARRAY_BUFFER, ctx->vbo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ctx->ibo);
 
-        nb_render_idx vtx_size = sizeof(rd.vtx[0]) * rd.vtx_count;
-        nb_render_idx idx_size = sizeof(rd.idx[0]) * rd.idx_count;
+        size_t vtx_size = sizeof(rd.vtx[0]) * rd.vtx_count;
+        size_t idx_size = sizeof(rd.idx[0]) * rd.idx_count;
 
         glBufferData(GL_ARRAY_BUFFER, vtx_size, NULL, GL_STREAM_DRAW);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_size, NULL, GL_STREAM_DRAW);
@@ -374,7 +376,7 @@ nbogl3_render(
                                         mode = GL_LINE_STRIP;
                                 }
 
-                                unsigned long offset = cmd->data.elem.offset * sizeof(nb_render_idx);
+                                size_t offset = cmd->data.elem.offset * sizeof(nb_render_idx);
                                 glDrawElements(
                                         mode,
                                         cmd->data.elem.count,
@@ -409,114 +411,39 @@ nbogl3_ctx_create(
         struct nbogl3_ctx *ctx = 0;
         ctx = (struct nbogl3_ctx*)NB_ALLOC(sizeof(*ctx));
 
-        #ifdef _WIN32
-        void * tmp = 0;
+#ifdef _WIN32
+        void *tmp = 0;
+#define OGL3_LOAD_PROC(PROC, TYPE) tmp = (void *)glGetProcAddr(#PROC); NB_ASSERT(tmp); PROC = (TYPE)tmp;
 
-        tmp = glGetProcAddr("glPushDebugGroup");
-        NB_ASSERT(tmp);
-        glPushDebugGroup = (PFNGLPUSHDEBUGGROUPPROC)tmp;
+        OGL3_LOAD_PROC(glPushDebugGroup, PFNGLPUSHDEBUGGROUPPROC);
+        OGL3_LOAD_PROC(glPopDebugGroup, PFNGLPOPDEBUGGROUPPROC);
+        OGL3_LOAD_PROC(glActiveTexture, PFNGLACTIVETEXTUREPROC);
+        OGL3_LOAD_PROC(glAttachShader, PFNGLATTACHSHADERPROC);
+        OGL3_LOAD_PROC(glBindBuffer, PFNGLBINDBUFFERPROC);
+        OGL3_LOAD_PROC(glBindVertexArray, PFNGLBINDVERTEXARRAYPROC);
+        OGL3_LOAD_PROC(glBufferData, PFNGLBUFFERDATAPROC);
+        OGL3_LOAD_PROC(glCompileShader, PFNGLCOMPILESHADERPROC);
+        OGL3_LOAD_PROC(glCreateProgram, PFNGLCREATEPROGRAMPROC);
+        OGL3_LOAD_PROC(glEnableVertexAttribArray, PFNGLENABLEVERTEXATTRIBARRAYPROC);
+        OGL3_LOAD_PROC(glGenBuffers, PFNGLGENBUFFERSPROC);
+        OGL3_LOAD_PROC(glGetProgramiv, PFNGLGETPROGRAMIVPROC);
+        OGL3_LOAD_PROC(glCreateShader, PFNGLCREATESHADERPROC);
+        OGL3_LOAD_PROC(glDeleteShader, PFNGLDELETESHADERPROC);
+        OGL3_LOAD_PROC(glGenVertexArrays, PFNGLGENVERTEXARRAYSPROC);
+        OGL3_LOAD_PROC(glGetAttribLocation, PFNGLGETATTRIBLOCATIONPROC);
+        OGL3_LOAD_PROC(glGetShaderiv, PFNGLGETSHADERIVPROC);
+        OGL3_LOAD_PROC(glGetUniformLocation, PFNGLGETUNIFORMLOCATIONPROC);
+        OGL3_LOAD_PROC(glLinkProgram, PFNGLLINKPROGRAMPROC);
+        OGL3_LOAD_PROC(glMapBuffer, PFNGLMAPBUFFERPROC);
+        OGL3_LOAD_PROC(glShaderSource, PFNGLSHADERSOURCEPROC);
+        OGL3_LOAD_PROC(glUniform1i, PFNGLUNIFORM1IPROC);
+        OGL3_LOAD_PROC(glUniformMatrix4fv, PFNGLUNIFORMMATRIX4FVPROC);
+        OGL3_LOAD_PROC(glUnmapBuffer, PFNGLUNMAPBUFFERPROC);
+        OGL3_LOAD_PROC(glUseProgram, PFNGLUSEPROGRAMPROC);
+        OGL3_LOAD_PROC(glVertexAttribPointer, PFNGVERTEXATTRIBPOINTERPROC);
 
-        tmp = glGetProcAddr("glPopDebugGroup");
-        NB_ASSERT(tmp);
-        glPopDebugGroup = (PFNGLPOPDEBUGGROUPPROC)tmp;
-
-        tmp = glGetProcAddr("glActiveTexture");
-        NB_ASSERT(tmp);
-        glActiveTexture = (PFNGLACTIVETEXTUREPROC)tmp;
-
-        tmp = glGetProcAddr("glAttachShader");
-        NB_ASSERT(tmp);
-        glAttachShader = (PFNGLATTACHSHADERPROC)tmp;
-
-        tmp = glGetProcAddr("glBindBuffer");
-        NB_ASSERT(tmp);
-        glBindBuffer = (PFNGLBINDBUFFERPROC)tmp;
-
-        tmp = glGetProcAddr("glBindVertexArray");
-        NB_ASSERT(tmp);
-        glBindVertexArray = (PFNGLBINDVERTEXARRAYPROC)tmp;
-
-        tmp = glGetProcAddr("glBufferData");
-        NB_ASSERT(tmp);
-        glBufferData = (PFNGLBUFFERDATAPROC)tmp;
-
-        tmp = glGetProcAddr("glCompileShader");
-        NB_ASSERT(tmp);
-        glCompileShader = (PFNGLCOMPILESHADERPROC)tmp;
-
-        tmp = glGetProcAddr("glCreateProgram");
-        NB_ASSERT(tmp);
-        glCreateProgram = (PFNGLCREATEPROGRAMPROC)tmp;
-
-        tmp = glGetProcAddr("glEnableVertexAttribArray");
-        NB_ASSERT(tmp);
-        glEnableVertexAttribArray = (PFNGLENABLEVERTEXATTRIBARRAYPROC)tmp;
-
-        tmp = glGetProcAddr("glGenBuffers");
-        NB_ASSERT(tmp);
-        glGenBuffers = (PFNGLGENBUFFERSPROC)tmp;
-
-        tmp = glGetProcAddr("glGetProgramiv");
-        NB_ASSERT(tmp);
-        glGetProgramiv = (PFNGLGETPROGRAMIVPROC)tmp;
-
-        tmp = glGetProcAddr("glCreateShader");
-        NB_ASSERT(tmp);
-        glCreateShader = (PFNGLCREATESHADERPROC)tmp;
-
-        tmp = glGetProcAddr("glDeleteShader");
-        NB_ASSERT(tmp);
-        glDeleteShader = (PFNGLDELETESHADERPROC)tmp;
-
-        tmp = glGetProcAddr("glGenVertexArrays");
-        NB_ASSERT(tmp);
-        glGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC)tmp;
-
-        tmp = glGetProcAddr("glGetAttribLocation");
-        NB_ASSERT(tmp);
-        glGetAttribLocation = (PFNGLGETATTRIBLOCATIONPROC)tmp;
-
-        tmp = glGetProcAddr("glGetShaderiv");
-        NB_ASSERT(tmp);
-        glGetShaderiv = (PFNGLGETSHADERIVPROC)tmp;
-
-        tmp = glGetProcAddr("glGetUniformLocation");
-        NB_ASSERT(tmp);
-        glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC)tmp;
-
-        tmp = glGetProcAddr("glLinkProgram");
-        NB_ASSERT(tmp);
-        glLinkProgram = (PFNGLLINKPROGRAMPROC)tmp;
-
-        tmp = glGetProcAddr("glMapBuffer");
-        NB_ASSERT(tmp);
-        glMapBuffer = (PFNGLMAPBUFFERPROC)tmp;
-
-        tmp = glGetProcAddr("glShaderSource");
-        NB_ASSERT(tmp);
-        glShaderSource = (PFNGLSHADERSOURCEPROC)tmp;
-
-        tmp = glGetProcAddr("glUniform1i");
-        NB_ASSERT(tmp);
-        glUniform1i = (PFNGLUNIFORM1IPROC)tmp;
-
-        tmp = glGetProcAddr("glUniformMatrix4fv");
-        NB_ASSERT(tmp);
-        glUniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC)tmp;
-
-        tmp = glGetProcAddr("glUnmapBuffer");
-        NB_ASSERT(tmp);
-        glUnmapBuffer = (PFNGLUNMAPBUFFERPROC)tmp;
-
-        tmp = glGetProcAddr("glUseProgram");
-        NB_ASSERT(tmp);
-        glUseProgram = (PFNGLUSEPROGRAMPROC)tmp;
-
-        tmp = glGetProcAddr("glVertexAttribPointer");
-        NB_ASSERT(tmp);
-        glVertexAttribPointer = (PFNGVERTEXATTRIBPOINTERPROC)tmp;
-
-        #endif
+#undef OGL3_LOAD_PROC
+#endif
 
         if(NEB_OGL3_DEBUG_SUPPORT) {
                 glPushDebugGroup(

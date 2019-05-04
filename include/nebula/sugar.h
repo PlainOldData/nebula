@@ -116,7 +116,7 @@ struct nb_window {
 
         struct nb_rect rect;
 
-        struct nbi_cmd_buf *cmd_buf;
+        struct nbr_cmd_buf *cmd_buf;
 };
 
 
@@ -186,7 +186,7 @@ nbi_hash_str(const char *name) {
 #define NB_THEME_WIN_BG_COLD 0x393333FF
 #define NB_THEME_WIN_BG_HOVER 0x3C3C39FF
 #define NB_THEME_WIN_BG_DRAG 0x212321FF
-#define NB_THEME_WIN_CORNER_RADIUS 2.f
+#define NB_THEME_WIN_CORNER_RADIUS 2
 #define NB_THEME_WIN_BORDER_SIZE 1
 #define NB_THEME_WIN_PADDING 5
 #define NB_THEME_WIN_PADDING_ELE 5
@@ -196,7 +196,7 @@ nbi_hash_str(const char *name) {
 #define NB_THEME_BUT_BG_COLD 0x333333FF
 #define NB_THEME_BUT_BG_HOVER 0x343434FF
 #define NB_THEME_BUT_BG_DOWN 0x252525FF
-#define NB_THEME_BUT_CORNER_RADIUS 2.f
+#define NB_THEME_BUT_CORNER_RADIUS 2
 #define NB_THEME_BUT_BORDER_SIZE 1
 #define NB_THEME_BUT_BORDER_COLOR 0x666666FF
 #define NB_THEME_BUT_TXT_COLOR 0xEFEFEFFF
@@ -260,6 +260,8 @@ nbs_window_begin(
         const char *name,
         uint32_t color_hex)
 {
+        (void)color_hex;
+
         /* validate */
         if(!ctx || !name) {
                 NB_ASSERT(!"NB_INVALID_PARAMS");
@@ -269,7 +271,6 @@ nbs_window_begin(
         /* find or create a new window */
         uint64_t hash_key = nbi_hash_str(name);
         struct nb_window *window = 0;
-        int win_idx = 0;
         uint32_t bgcol = NB_THEME_WIN_BG_COLD;
 
         nb_bool found = nbi_window_search(
@@ -283,7 +284,7 @@ nbs_window_begin(
                 return 0;
         }
 
-        nb_result ok = nb_render_cmd_create(ctx->rdr_ctx, &window->cmd_buf);
+        nb_result ok = nbr_cmd_buf_create(ctx->rdr_ctx, &window->cmd_buf);
 
         if(ok != NB_OK) {
                 NB_ASSERT(!"NB_FAIL - Failed creating rdr cmd buffer");
@@ -335,14 +336,14 @@ nbs_window_begin(
         struct nb_rect wrect = window->rect;
 
         /* border */
-        float bo_rad = NB_THEME_WIN_CORNER_RADIUS + NB_THEME_WIN_BORDER_SIZE;
+        int bo_rad = NB_THEME_WIN_CORNER_RADIUS + NB_THEME_WIN_BORDER_SIZE;
         struct nb_color bocolor = nb_color_from_int(NB_THEME_WIN_BORDER_COLOR);
         struct nb_rect nbrect = nb_rect_expand(wrect, NB_THEME_WIN_BORDER_SIZE);
 
         nbr_box(ctx->rdr_ctx, window->cmd_buf, nbrect, bocolor, bo_rad);
 
         /* body */
-        float b_rad = NB_THEME_WIN_CORNER_RADIUS;
+        int b_rad = NB_THEME_WIN_CORNER_RADIUS;
         struct nb_color bgcolor = nb_color_from_int(bgcol);
 
         nbr_box(ctx->rdr_ctx, window->cmd_buf, wrect, bgcolor, b_rad);
@@ -391,7 +392,7 @@ nbs_button(
 
         float txt_size[2];
         uint32_t txt_flags = NB_TEXT_ALIGN_CENTER;
-        nbr_get_text_size(ctx->rdr_ctx, win->rect.w, txt_flags, name, txt_size);
+        nbr_get_text_size(ctx->rdr_ctx, (float)win->rect.w, txt_flags, name, txt_size);
 
         struct nb_rect rect;
         rect.x = win->rect.x + NB_THEME_WIN_PADDING;
@@ -423,14 +424,14 @@ nbs_button(
         }
 
         /* border */
-        float bo_rad = NB_THEME_BUT_CORNER_RADIUS + NB_THEME_BUT_BORDER_SIZE;
+        int bo_rad = NB_THEME_BUT_CORNER_RADIUS + NB_THEME_BUT_BORDER_SIZE;
         struct nb_color bocolor = nb_color_from_int(NB_THEME_BUT_BORDER_COLOR);
         struct nb_rect nbrect = nb_rect_expand(rect, NB_THEME_BUT_BORDER_SIZE);
 
         nbr_box(ctx->rdr_ctx, win->cmd_buf, nbrect, bocolor, bo_rad);
 
         /* body */
-        float b_rad = NB_THEME_BUT_CORNER_RADIUS;
+        int b_rad = NB_THEME_BUT_CORNER_RADIUS;
         struct nb_color bgcolor = nb_color_from_int(bgcol);
 
         nbr_box(ctx->rdr_ctx, win->cmd_buf, rect, bgcolor, b_rad);
@@ -511,7 +512,7 @@ nbs_frame_submit(
         }
 
         /* renderer frame */
-        struct nbi_cmd_buf *cmds[32];
+        struct nbr_cmd_buf *cmds[32];
         int cmd_count = 0;
 
         int win_count = NB_ARR_COUNT(ctx->windows);
