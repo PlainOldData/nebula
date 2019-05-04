@@ -220,7 +220,7 @@ glPopDebugGroup_neb() {
 
 
 struct nbogl3_ctx {
-        GLuint ftex[NB_FONT_COUNT_MAX];
+        GLuint ftex[NBR_FONT_COUNT_MAX];
         GLuint vao;
         GLuint pro;
         GLuint vbo, ibo;
@@ -447,7 +447,7 @@ nbogl3_ctx_create(
 
         unsigned int i;
 
-        struct nb_font_tex font_tex_list[NB_FONT_COUNT_MAX];
+        struct nb_font_tex font_tex_list[NBR_FONT_COUNT_MAX];
         nb_get_font_tex_list(nbr_ctx, font_tex_list);
         for (i = 0; i < font_count; i++) {
                 struct nb_font_tex * f = font_tex_list + i;
