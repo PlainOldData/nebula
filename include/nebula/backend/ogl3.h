@@ -84,6 +84,7 @@ typedef uintptr_t GLsizeiptr;
 
 
 #define GL_R8                             0x8229
+#define GL_BGRA                           0x80E1
 #define GL_FRAGMENT_SHADER                0x8B30
 #define GL_VERTEX_SHADER                  0x8B31
 #define GL_DEBUG_SOURCE_APPLICATION       0x824A
@@ -288,7 +289,7 @@ nbogl3_render(
                         "Nebula OGL Render");
         }
 
-        int vp_width, vp_height;
+        uint32_t vp_width, vp_height;
         nbr_viewport_get(nbr_ctx, &vp_width, &vp_height);
 
         /* setup gl */
@@ -307,7 +308,7 @@ nbogl3_render(
 
         glUseProgram(ctx->pro);
         glUniformMatrix4fv(ctx->uniproj, 1, GL_FALSE, &proj[0][0]);
-        glViewport(0, 0, vp_width, vp_height);
+        glViewport(0, 0, (GLsizei)vp_width, (GLsizei)vp_height);
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -342,18 +343,18 @@ nbogl3_render(
                 struct nbr_cmd_buf *cmd_buf = draw->cmd_bufs[buf_idx];
 
                 struct nbr_vtx_buf *vtx_buf = &cmd_buf->vtx_buf;
-                glBufferData(GL_ARRAY_BUFFER, sizeof(struct nbr_vtx) * vtx_buf->v_count, vtx_buf->v, GL_STREAM_DRAW);
-                glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(nbr_idx) * vtx_buf->i_count, vtx_buf->i, GL_STREAM_DRAW);
+                glBufferData(GL_ARRAY_BUFFER, sizeof(struct nbr_vtx) * vtx_buf->vtx_count, vtx_buf->vtx, GL_STREAM_DRAW);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(nbr_idx) * vtx_buf->idx_count, vtx_buf->idx, GL_STREAM_DRAW);
 
                 for (i = 0; i < cmd_buf->cmd_count; ++i) {
                         struct nbr_cmd *cmd = cmd_buf->cmds + i;
 
                         if (cmd->type == NBR_CMD_TYPE_SCISSOR) {
-                                int w = cmd->data.clip_rect[2];
-                                int h = cmd->data.clip_rect[3];
+                                GLsizei w = cmd->data.clip_rect[2];
+                                GLsizei h = cmd->data.clip_rect[3];
 
-                                int x = cmd->data.clip_rect[0];
-                                int y = vp_height - (cmd->data.clip_rect[1] + h);
+                                GLint x = cmd->data.clip_rect[0];
+                                GLint y = vp_height - (cmd->data.clip_rect[1] + h);
 
                                 glScissor(x, y, w, h);
                         }
@@ -468,7 +469,7 @@ nbogl3_ctx_create(
                 "out vec4 frag_color;\n"
                 "void main() {"
                 "       frag_uv = texcoord;\n"
-                "       frag_color = color;\n"
+                "       frag_color = color.argb;\n"
                 "       gl_Position = projection * vec4(position.xy, 0, 1);\n"
                 "}";
 
@@ -535,8 +536,8 @@ nbogl3_ctx_create(
         ptr = (void *)offsetof(struct nbr_vtx, u);
         glVertexAttribPointer(ctx->intex, 2, GL_FLOAT, GL_FALSE, stride, ptr);
 
-        ptr = (void *)offsetof(struct nbr_vtx, r);
-        glVertexAttribPointer(ctx->incol, 4, GL_FLOAT, GL_FALSE, stride, ptr);
+        ptr = (void *)offsetof(struct nbr_vtx, c);
+        glVertexAttribPointer(ctx->incol, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, stride, ptr);
 
         if(NEB_OGL3_DEBUG_SUPPORT) {
                 glPopDebugGroup();

@@ -53,7 +53,7 @@ struct nbr_cmd_elem {
 
 union nbr_cmd_data {
         struct nbr_cmd_elem elem;
-        uint16_t clip_rect[4];
+        int16_t clip_rect[4];
 };
 
 
@@ -66,7 +66,7 @@ struct nbr_cmd {
 struct nbr_vtx {
         float x, y;
         float u, v;
-        float r, g, b, a;
+        uint32_t c;
 };
 
 
@@ -78,13 +78,13 @@ struct nbr_cmd_limits {
 
 
 struct nbr_vtx_buf {
-        struct nbr_vtx *v;
-        uint32_t v_count;
-        uint32_t v_count_max;
+        struct nbr_vtx *vtx;
+        uint32_t vtx_count;
+        uint32_t vtx_count_max;
 
-        nbr_idx *i;
-        uint32_t i_count;
-        uint32_t i_count_max;
+        nbr_idx *idx;
+        uint32_t idx_count;
+        uint32_t idx_count_max;
 };
 
 
@@ -136,7 +136,7 @@ struct nb_renderer_ctx {
         struct nbi_font *font;
         struct nbi_font *debug_font_next;
 
-        int width, height;
+        uint32_t width, height;
 };
 
 
@@ -204,8 +204,8 @@ nbr_box(
         struct nb_renderer_ctx *ctx,        /* required */
         struct nbr_cmd_buf *buf,           /* required */
         struct nb_rect rect,
-        struct nb_color color,
-        int radius);
+        uint32_t color,
+        uint32_t radius);
 
 
 void
@@ -214,7 +214,7 @@ nbr_line(
         struct nbr_cmd_buf * buf,
         float * p,
         float * q,
-        struct nb_color color);
+        uint32_t color);
 
 
 void
@@ -225,7 +225,7 @@ nbr_bez(
         float * p1,
         float * p2,
         float * p3,
-        struct nb_color color);
+        uint32_t color);
 
 
 enum nbr_text_flags {
@@ -240,29 +240,29 @@ nbr_get_text_size(
         struct nb_renderer_ctx * ctx,
         float width,
         uint32_t flags,
-        const char * str,
-        float * out_size);
+        const char *str,
+        float *out_size);
 
 
 void
 nbr_text(
-        struct nb_renderer_ctx * ctx,
-        struct nbr_cmd_buf * buf,
+        struct nb_renderer_ctx *ctx,
+        struct nbr_cmd_buf *buf,
         struct nb_rect pos,
         uint32_t flags,
-        struct nb_color color,
-        const char * str);
+        uint32_t color,
+        const char *str);
 
 
 void
 nbr_scissor_set(
-        struct nbr_cmd_buf * buf,
+        struct nbr_cmd_buf *buf,
         struct nb_rect rect);
 
 
 void
 nbr_scissor_clear(
-        struct nbr_cmd_buf * buf);
+        struct nbr_cmd_buf *buf);
 
 
 /* ---------------------------------------------------------- Render State -- */
@@ -271,15 +271,15 @@ nbr_scissor_clear(
 nb_result
 nbr_viewport_set(
         nbr_ctx_t ctx,
-        int width,
-        int height);
+        uint32_t width,
+        uint32_t height);
 
 
 nb_result
 nbr_viewport_get(
         nbr_ctx_t ctx,
-        int *width,
-        int *height);
+        uint32_t *width,
+        uint32_t *height);
 
 
 #endif
@@ -474,50 +474,46 @@ nbi_font_init(
 
 
 static void
-nbi_push_vtx(
-        struct nbr_vtx_buf *buf,
-        float x,
-        float y,
-        struct nb_color color)
-{
-        if(buf->v_count <= buf->v_count_max) {
-                uint32_t i = buf->v_count++;
-                buf->v[i].x = x;
-                buf->v[i].y = y;
-                buf->v[i].u = 0.0f;
-                buf->v[i].v = 0.0f;
-                buf->v[i].r = color.r;
-                buf->v[i].g = color.g;
-                buf->v[i].b = color.b;
-                buf->v[i].a = color.a;
-        }
-        else {
-                NB_ASSERT(!"nbi_push_vtx_uv: vtx buf full!");
-        }
-}
-
-static void
 nbi_push_vtx_uv(
         struct nbr_vtx_buf *buf,
         float x,
         float y,
         float u,
         float v,
-        struct nb_color color)
+        uint32_t c)
 {
-        if(buf->v_count <= buf->v_count_max) {
-                uint32_t i = buf->v_count++;
-                buf->v[i].x = x;
-                buf->v[i].y = y;
-                buf->v[i].u = u;
-                buf->v[i].v = v;
-                buf->v[i].r = color.r;
-                buf->v[i].g = color.g;
-                buf->v[i].b = color.b;
-                buf->v[i].a = color.a;
+        if(buf->vtx_count < buf->vtx_count_max) {
+                uint32_t i = buf->vtx_count++;
+                buf->vtx[i].x = x;
+                buf->vtx[i].y = y;
+                buf->vtx[i].u = u;
+                buf->vtx[i].v = v;
+                buf->vtx[i].c = c;
         }
         else {
                 NB_ASSERT(!"nbi_push_vtx_uv: vtx buf full!");
+        }
+}
+
+
+static void
+nbi_push_vtx(
+        struct nbr_vtx_buf *buf,
+        float x,
+        float y,
+        uint32_t c)
+{
+        nbi_push_vtx_uv(buf, x, y, 0.0f, 0.0f, c);
+}
+
+
+static void
+nbi_push_idx(struct nbr_vtx_buf *buf, nbr_idx idx) {
+        if(buf->idx_count < buf->idx_count_max) {
+                buf->idx[buf->idx_count++] = idx;
+        }
+        else {
+                NB_ASSERT(!"nbi_push_idx: vtx buf full!");
         }
 }
 
@@ -529,14 +525,14 @@ nbi_push_quad_idxs(
         nbr_idx bot_rgt,
         nbr_idx top_rgt)
 {
-        if((buf->i_count + 6) <= buf->i_count_max) {
-                buf->i[buf->i_count++] = top_lft;
-                buf->i[buf->i_count++] = bot_lft;
-                buf->i[buf->i_count++] = bot_rgt;
+        if((buf->idx_count + 6) <= buf->idx_count_max) {
+                buf->idx[buf->idx_count++] = top_lft;
+                buf->idx[buf->idx_count++] = bot_lft;
+                buf->idx[buf->idx_count++] = bot_rgt;
 
-                buf->i[buf->i_count++] = top_lft;
-                buf->i[buf->i_count++] = bot_rgt;
-                buf->i[buf->i_count++] = top_rgt;
+                buf->idx[buf->idx_count++] = top_lft;
+                buf->idx[buf->idx_count++] = bot_rgt;
+                buf->idx[buf->idx_count++] = top_rgt;
         }
         else {
                 NB_ASSERT(!"nbi_push_quad_idxs: vtx buf full!");
@@ -548,7 +544,7 @@ nbi_push_quad(
         struct nbr_vtx_buf *buf,
         nbr_idx vtx,
         float *rect,
-        struct nb_color color)
+        uint32_t color)
 {
         nbi_push_quad_idxs(buf, vtx, vtx + 1, vtx + 2, vtx + 3);
         nbi_push_vtx(buf, rect[0], rect[1], color);
@@ -563,42 +559,37 @@ nbi_push_round_corner(
         struct nbr_vtx_buf *buf,
         float px,
         float py,
-        struct nb_color color,
+        uint32_t color,
         nbr_idx seg_count,
-        int radius, float angle)
+        uint32_t radius, float angle)
 {
         uint32_t result = 0;
-        if((buf->i_count + (seg_count * 3)) <= buf->i_count_max) {
-                if(seg_count) {
-                        nbr_idx i;
+        if(seg_count) {
+                nbr_idx i;
 
-                        nbr_idx vtx = (nbr_idx)buf->v_count;
+                nbr_idx vtx = (nbr_idx)buf->vtx_count;
 
-                        for(i = 0; i < seg_count; i++) {
-                                buf->i[buf->i_count++] = vtx;
-                                buf->i[buf->i_count++] = vtx + (i + 1);
-                                buf->i[buf->i_count++] = vtx + (i + 2);
-                        }
-
-                        nbi_push_vtx(buf, px, py, color);
-
-                        float d_angle = ((float)NB_TAU * 0.25f) / (float)seg_count;
-
-                        for(i = 0; i < (seg_count + 1); i++) {
-                                float t = angle + d_angle * (float)i;
-                                float x = px + cosf(t) * radius;
-                                float y = py - sinf(t) * radius;
-                                nbi_push_vtx(buf, x, y, color);
-                        }
-
-                        result = seg_count + 2;
+                for(i = 0; i < seg_count; i++) {
+                        nbi_push_idx(buf, vtx);
+                        nbi_push_idx(buf, vtx + (i + 1));
+                        nbi_push_idx(buf, vtx + (i + 2));
                 }
-                else {
-                        NB_ASSERT(!"nbi_push_round_corner: trying to push a corner with no segments!");
+
+                nbi_push_vtx(buf, px, py, color);
+
+                float d_angle = ((float)NB_TAU * 0.25f) / (float)seg_count;
+
+                for(i = 0; i < (seg_count + 1); i++) {
+                        float t = angle + d_angle * (float)i;
+                        float x = px + cosf(t) * (float)radius;
+                        float y = py - sinf(t) * (float)radius;
+                        nbi_push_vtx(buf, x, y, color);
                 }
+
+                result = seg_count + 2;
         }
         else {
-                NB_ASSERT(!"nbi_push_round_corner: vtx buf full!");
+                NB_ASSERT(!"nbi_push_round_corner: trying to push a corner with no segments!");
         }
         return result;
 }
@@ -689,15 +680,15 @@ nbr_cmd_buf_init(struct nbr_cmd_buf **out_buf, struct nbr_cmd_limits lim, void *
                 buf->cmd_count = 0;
                 buf->cmd_count_max = lim.cmd_count_max;
 
-                buf->vtx_buf.v = (struct nbr_vtx *)ptr;
+                buf->vtx_buf.vtx = (struct nbr_vtx *)ptr;
                 ptr += sizeof(struct nbr_vtx) * lim.vtx_count_max;
-                buf->vtx_buf.v_count = 0;
-                buf->vtx_buf.v_count_max = lim.vtx_count_max;
+                buf->vtx_buf.vtx_count = 0;
+                buf->vtx_buf.vtx_count_max = lim.vtx_count_max;
 
-                buf->vtx_buf.i = (nbr_idx *)ptr;
+                buf->vtx_buf.idx = (nbr_idx *)ptr;
                 ptr += sizeof(nbr_idx) * lim.idx_count_max;
-                buf->vtx_buf.i_count = 0;
-                buf->vtx_buf.i_count_max = lim.idx_count_max;
+                buf->vtx_buf.idx_count = 0;
+                buf->vtx_buf.idx_count_max = lim.idx_count_max;
 
                 *out_buf = buf;
         }
@@ -717,8 +708,8 @@ nbr_cmd_buf_array_clear(struct nbr_cmd_buf **bufs, uint32_t buf_count) {
                         struct nbr_cmd_buf *buf = bufs[i];
                         if(buf) {
                                 buf->cmd_count = 0;
-                                buf->vtx_buf.v_count = 0;
-                                buf->vtx_buf.i_count = 0;
+                                buf->vtx_buf.vtx_count = 0;
+                                buf->vtx_buf.idx_count = 0;
                         }
                         else {
                                 NB_ASSERT(!"nbr_cmd_buf_array_clear: buf is null!");
@@ -766,10 +757,10 @@ nbi_cmd_begin(
         struct nbr_cmd *result = nbi_cmd_push(buf);
         if(result) {
                 result->type = type;
-                result->data.elem.offset = data->i_count;
+                result->data.elem.offset = data->idx_count;
 
                 if(vtx) {
-                        *vtx = (nbr_idx)data->v_count;
+                        *vtx = (nbr_idx)data->vtx_count;
                 }
         }
         return result;
@@ -779,7 +770,7 @@ static void
 nbi_cmd_end(struct nbr_vtx_buf *data, struct nbr_cmd *cmd) {
         if(cmd) {
                 if(data) {
-                        cmd->data.elem.count = data->i_count - cmd->data.elem.offset;
+                        cmd->data.elem.count = data->idx_count - cmd->data.elem.offset;
                 }
                 else {
                         NB_ASSERT(!"nbi_cmd_end: data cannot be null!");
@@ -793,8 +784,8 @@ nbr_box(
         struct nb_renderer_ctx *ctx,
         struct nbr_cmd_buf *buf,
         struct nb_rect rec,
-        struct nb_color color,
-        int radius)
+        uint32_t color,
+        uint32_t radius)
 {
         (void)ctx;
 
@@ -807,7 +798,7 @@ nbr_box(
         rect[0] = (float)rec.x; rect[1] = (float)rec.y;
         rect[2] = (float)rec.w; rect[3] = (float)rec.h;
 
-        int extent_min = (rec.w < rec.h ? rec.w : rec.h) / 2;
+        uint32_t extent_min = (rec.w > 0 && rec.h > 0) ? (uint32_t)((rec.w < rec.h ? rec.w : rec.h) / 2) : 0;
         if(radius > extent_min) {
                 radius = extent_min;
         }
@@ -863,7 +854,7 @@ nbr_line(
         struct nbr_cmd_buf *buf,
         float *p,
         float *q,
-        struct nb_color color)
+        uint32_t color)
 {
         (void)ctx;
 
@@ -872,8 +863,8 @@ nbr_line(
         nbr_idx vtx;
         struct nbr_cmd *cmd = nbi_cmd_begin(buf, data, NBR_CMD_TYPE_LINES, &vtx);
 
-        data->i[data->i_count++] = vtx;
-        data->i[data->i_count++] = vtx + 1;
+        nbi_push_idx(data, vtx);
+        nbi_push_idx(data, vtx + 1);
 
         nbi_push_vtx(data, p[0], p[1], color);
         nbi_push_vtx(data, q[0], q[1], color);
@@ -890,7 +881,7 @@ nbr_bez(
         float *p1,
         float *p2,
         float *p3,
-        struct nb_color color)
+        uint32_t color)
 {
         (void)ctx;
 
@@ -900,10 +891,10 @@ nbr_bez(
         struct nbr_cmd * cmd = nbi_cmd_begin(buf, data, NBR_CMD_TYPE_LINES, &vtx);
 
         nbr_idx seg_count = 16;
-        nbr_idx si, i;
+        nbr_idx i;
 
-        for(si = 0; si < seg_count; si++) {
-                data->i[data->i_count++] = vtx + si;
+        for(i = 0; i < seg_count; i++) {
+                nbi_push_idx(data, vtx + i);
         }
 
         for(i = 0; i < seg_count; i++) {
@@ -954,11 +945,11 @@ nbi_line_adv(struct nbr_vtx_buf * buf, struct nbi_text_out * out) {
 
                 if(buf) {
                         uint32_t i;
-                        for(i = out->vtx_start; i < buf->v_count; i++) {
-                                buf->v[i].x += offset;
+                        for(i = out->vtx_start; i < buf->vtx_count; i++) {
+                                buf->vtx[i].x += offset;
                         }
 
-                        out->vtx_start = buf->v_count;
+                        out->vtx_start = buf->vtx_count;
                 }
         }
 
@@ -974,14 +965,14 @@ nbi_line_adv(struct nbr_vtx_buf * buf, struct nbi_text_out * out) {
 
 void
 nbr_text_(
-        struct nb_renderer_ctx * ctx,
-        struct nbr_cmd_buf * buf,
-        struct nbi_font * font,
+        struct nb_renderer_ctx *ctx,
+        struct nbr_cmd_buf *buf,
+        struct nbi_font *font,
         struct nb_rect rect,
         uint32_t flags,
-        struct nb_color color,
-        const char * text,
-        float * out_size)
+        uint32_t color,
+        const char *text,
+        float *out_size)
 {
         (void)ctx;
 
@@ -1013,7 +1004,7 @@ nbr_text_(
                 data = &buf->vtx_buf;
                 cmd = nbi_cmd_begin(buf, data, NBR_CMD_TYPE_TRIANGLES, &vtx);
 
-                out.vtx_start = data->v_count;
+                out.vtx_start = data->vtx_count;
         }
 
         char * it = (char *)text;
@@ -1115,7 +1106,7 @@ nbr_text_(
                 }
 
                 if(buf) {
-                        uint32_t cursor_on = 1;//((uint32_t)(buf->ctx->state.text_cursor_time * 2.0f) & 1) == 0;
+                        uint32_t cursor_on = 1; /* ((uint32_t)(buf->ctx->state.text_cursor_time * 2.0f) & 1) == 0; */
                         if(cursor_on) {
                                 float cursor_rect[4];
                                 cursor_rect[0] = out.x;
@@ -1146,8 +1137,8 @@ nbr_get_text_size(
         struct nb_renderer_ctx * ctx,
         float width,
         uint32_t flags,
-        const char * text,
-        float * out_size)
+        const char *text,
+        float *out_size)
 {
         if(!ctx || !out_size) {
                 NB_ASSERT(!"Invalid params");
@@ -1157,8 +1148,7 @@ nbr_get_text_size(
         struct nbi_font * font = ctx->font;
         struct nb_rect rect;
         rect.x = 0; rect.y = 0; rect.w = (int)width; rect.h = 0;
-        struct nb_color col = nb_color_from_int(0x0);
-        nbr_text_(ctx, 0, font, rect, flags, col, text, out_size);
+        nbr_text_(ctx, 0, font, rect, flags, 0, text, out_size);
 }
 
 
@@ -1168,7 +1158,7 @@ nbr_text(
         struct nbr_cmd_buf *buf,
         struct nb_rect rect,
         uint32_t flags,
-        struct nb_color color,
+        uint32_t color,
         const char *text)
 {
         struct nbi_font *font = ctx->font;
@@ -1184,10 +1174,10 @@ nbr_scissor_set(
         struct nbr_cmd *cmd = nbi_cmd_push(buf);
         if(cmd) {
                 cmd->type = NBR_CMD_TYPE_SCISSOR;
-                cmd->data.clip_rect[0] = (uint16_t)rect.x;
-                cmd->data.clip_rect[1] = (uint16_t)rect.y;
-                cmd->data.clip_rect[2] = (uint16_t)rect.w;
-                cmd->data.clip_rect[3] = (uint16_t)rect.h;
+                cmd->data.clip_rect[0] = (int16_t)rect.x;
+                cmd->data.clip_rect[1] = (int16_t)rect.y;
+                cmd->data.clip_rect[2] = (int16_t)rect.w;
+                cmd->data.clip_rect[3] = (int16_t)rect.h;
         }
 }
 
@@ -1293,8 +1283,8 @@ nbr_ctx_destroy(
 nb_result
 nbr_viewport_set(
         nbr_ctx_t ctx,
-        int width,
-        int height)
+        uint32_t width,
+        uint32_t height)
 {
         if(!ctx) {
                 return NB_INVALID_PARAMS;
@@ -1310,8 +1300,8 @@ nbr_viewport_set(
 nb_result
 nbr_viewport_get(
         nbr_ctx_t ctx,
-        int *width,
-        int *height)
+        uint32_t *width,
+        uint32_t *height)
 {
         if(!ctx) {
                 return NB_INVALID_PARAMS;

@@ -347,20 +347,20 @@ nbs_window_begin(
 
         /* border */
         int bo_rad = NB_THEME_WIN_CORNER_RADIUS + NB_THEME_WIN_BORDER_SIZE;
-        struct nb_color bocolor = nb_color_from_int(NB_THEME_WIN_BORDER_COLOR);
+        uint32_t bocolor = NB_THEME_WIN_BORDER_COLOR;
         struct nb_rect nbrect = nb_rect_expand(wrect, NB_THEME_WIN_BORDER_SIZE);
 
         nbr_box(ctx->rdr_ctx, window->cmd_buf, nbrect, bocolor, bo_rad);
 
         /* body */
         int b_rad = NB_THEME_WIN_CORNER_RADIUS;
-        struct nb_color bgcolor = nb_color_from_int(bgcol);
+        uint32_t bgcolor = bgcol;
 
         nbr_box(ctx->rdr_ctx, window->cmd_buf, wrect, bgcolor, b_rad);
 
         /* title */
         struct nb_rect trect = nb_rect_expand(wrect, -NB_THEME_WIN_PADDING);
-        struct nb_color txtc = nb_color_from_int(NB_THEME_WIN_TITLE_TXT_COLOR);
+        uint32_t txtc = NB_THEME_WIN_TITLE_TXT_COLOR;
 
         nbr_scissor_set(window->cmd_buf, trect);
         nbr_text(ctx->rdr_ctx, window->cmd_buf, trect, 0, txtc, name);
@@ -435,19 +435,19 @@ nbs_button(
 
         /* border */
         int bo_rad = NB_THEME_BUT_CORNER_RADIUS + NB_THEME_BUT_BORDER_SIZE;
-        struct nb_color bocolor = nb_color_from_int(NB_THEME_BUT_BORDER_COLOR);
+        uint32_t bocolor = NB_THEME_BUT_BORDER_COLOR;
         struct nb_rect nbrect = nb_rect_expand(rect, NB_THEME_BUT_BORDER_SIZE);
 
         nbr_box(ctx->rdr_ctx, win->cmd_buf, nbrect, bocolor, bo_rad);
 
         /* body */
         int b_rad = NB_THEME_BUT_CORNER_RADIUS;
-        struct nb_color bgcolor = nb_color_from_int(bgcol);
+        uint32_t bgcolor = bgcol;
 
         nbr_box(ctx->rdr_ctx, win->cmd_buf, rect, bgcolor, b_rad);
 
         /* text */
-        struct nb_color txtc = nb_color_from_int(NB_THEME_BUT_TXT_COLOR);
+        uint32_t txtc = NB_THEME_BUT_TXT_COLOR;
 
         nbr_scissor_set(win->cmd_buf, rect);
         nbr_text(ctx->rdr_ctx, win->cmd_buf, rect, txt_flags, txtc, name);

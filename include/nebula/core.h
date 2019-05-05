@@ -85,24 +85,10 @@ nb_rect_contains(
         int y);
 
 
-struct nb_color {
-        float r,g,b,a;                      /* color components */
-};
-
-
-/*
- * returns a color, constructed by a hex, the hex is defined as 0xRRGGBBAA
- * where RR is red, GG is green, BB is blue, and AA is alpha.
- */
-struct nb_color
-nb_color_from_int(
-        uint32_t hex);                      /* hex in format 0xRRGGBBAA, eg 0x00FF00FF is full green. */
-
-
 /*
  * returns a color, constructed by an array of 4 floats, in the order rgba.
  */
-struct nb_color
+uint32_t
 nb_color_from_float_arr(
         float *arr);                        /* required - must be float[4] */
 
@@ -454,7 +440,7 @@ nbc_collider(
 
         /* insert new collider */
         ctx->collider_count += 1;
-        
+
         struct nbi_collider *coll = &ctx->colliders[insert_idx];
         coll->index = desc->index;
         coll->rect = *desc->rect;
@@ -720,12 +706,12 @@ nb_rect_expand(
         int size)
 {
         int size_2x = size * 2;
-        
+
         rect.x -= size;
         rect.y -= size;
         rect.w += size_2x;
         rect.h += size_2x;
-        
+
         return rect;
 }
 
@@ -752,38 +738,20 @@ nb_rect_contains(
 }
 
 
-struct nb_color
-nb_color_from_int(
-        uint32_t hex)
-{
-        struct nb_color color;
-        
-        uint8_t c0 = (hex >> 24) & 0xFF;
-        color.r = (float)(c0) / 255.f;
-        
-        uint8_t c1 = (hex >> 16) & 0xFF;
-        color.g = (float)(c1) / 255.f;
-        
-        uint8_t c2 = (hex >> 8) & 0xFF;
-        color.b = (float)(c2) / 255.f;
-        
-        uint8_t c3 = (hex >> 0) & 0xFF;
-        color.a = (float)(c3) / 255.f;
-        
-        return color;
-}
-
-
-struct nb_color
+uint32_t
 nb_color_from_float_arr(float *arr) {
-        struct nb_color color;
+        float r = arr[0] >= 0.0f ? (arr[0] <= 1.0f ? arr[0] : 1.0f) : 0.0f;
+        float g = arr[1] >= 0.0f ? (arr[1] <= 1.0f ? arr[1] : 1.0f) : 0.0f;
+        float b = arr[2] >= 0.0f ? (arr[2] <= 1.0f ? arr[2] : 1.0f) : 0.0f;
+        float a = arr[3] >= 0.0f ? (arr[3] <= 1.0f ? arr[3] : 1.0f) : 0.0f;
 
-        color.r = arr[0]; color.g = arr[1];
-        color.b = arr[2]; color.a = arr[3];
-
-        return color;
+        uint32_t result = 0;
+        result |= ((uint32_t)(r * 255.0f) & 0xFF) << 24;
+        result |= ((uint32_t)(g * 255.0f) & 0xFF) << 16;
+        result |= ((uint32_t)(b * 255.0f) & 0xFF) << 8;
+        result |= ((uint32_t)(a * 255.0f) & 0xFF);
+        return result;
 };
-
 
 
 /* -------------------------------------------------------------- Lifetime -- */
