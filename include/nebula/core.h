@@ -124,7 +124,7 @@ nbc_ctx_destroy(
 /*
  *  Nebula works on frames, at the start of all nebula commands you must call
  *  `nbc_frame_begin()` followed by your nebula commands. Once finished you must
- *  call `nbc_frame_submit()` The next frame you will be informed of any
+ *  call `nbc_frame_end()` The next frame you will be informed of any
  *  interactions the pointer had with colliders.
  */
 
@@ -144,7 +144,7 @@ nbc_frame_begin(
  * return NB_FAIL if an internal error occured
  */
 nb_result
-nbc_frame_submit(
+nbc_frame_end(
         nbc_ctx_t ctx);                     /* required */
 
 
@@ -153,7 +153,7 @@ nbc_frame_submit(
  * Adds a collider to the environment, if a collider has hit the pointer,
  *
  * Note: you must only add a collider between `nbc_frame_begin()` and
- * `nbc_frame_submit()`
+ * `nbc_frame_end()`
  */
 
 
@@ -181,7 +181,7 @@ struct nb_interaction {
 /*
  * returns NB_OK if the collider was added.
  * returns NB_INVALID_PARAMS if ctx or desc are null.
- * returns NB_CORRUPT_CALL if not called between `nbc_frame_begin` and `nbc_frame_submit`
+ * returns NB_CORRUPT_CALL if not called between `nbc_frame_begin` and `nbc_frame_end`
  * returns NB_FAIL if an internal error occured.
  */
 nb_result
@@ -611,7 +611,7 @@ nbc_frame_begin(
         }
 
         if(ctx->frame_open == NB_TRUE) {
-                /* Was `nbc_frame_submit()` last frame? */
+                /* Was `nbc_frame_end()` last frame? */
                 NB_ASSERT(!"NB_CORRUPT_CALL");
                 return NB_CORRUPT_CALL;
         }
@@ -623,7 +623,7 @@ nbc_frame_begin(
 
 
 nb_result
-nbc_frame_submit(
+nbc_frame_end(
         nbc_ctx_t ctx)
 {
         if(!ctx) {

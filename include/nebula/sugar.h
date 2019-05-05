@@ -509,7 +509,7 @@ nbs_frame_end(
         nb_result ok = NB_OK;
 
         /* core frame */
-        ok = nbc_frame_submit(ctx->core_ctx);
+        ok = nbc_frame_end(ctx->core_ctx);
 
         if(ok != NB_OK) {
                 NB_ASSERT(!"NB_FAIL - Failed to submit core frame");
