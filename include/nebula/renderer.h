@@ -5,9 +5,11 @@
 #include <nebula/core.h>
 #include "stb_truetype.h"
 
+
 #ifndef NBR_INDEX_SIZE
 #define NBR_INDEX_SIZE 16
 #endif
+
 
 #if NBR_INDEX_SIZE == 8
 #define NBR_VERTEX_COUNT_MAX 0xFF
@@ -22,9 +24,6 @@ typedef uint32_t nbr_idx;
 #error "Nebula: NBR_INDEX_SIZE must be 8, 16 or 32 bytes!"
 #endif
 
-#ifndef NBR_CMD_BUF_COUNT_MAX
-#define NBR_CMD_BUF_COUNT_MAX 128
-#endif
 
 #define NBR_FONT_COUNT_MAX 16
 #define NB_TAU 6.2831853071
@@ -64,16 +63,17 @@ struct nbr_cmd {
 };
 
 
-struct nbr_draw_data {
-        struct nbr_cmd_buf *cmd_bufs[NBR_CMD_BUF_COUNT_MAX];
-        uint32_t cmd_buf_count;
-};
-
-
 struct nbr_vtx {
         float x, y;
         float u, v;
         float r, g, b, a;
+};
+
+
+struct nbr_cmd_limits {
+        uint32_t cmd_count_max;
+        uint32_t vtx_count_max;
+        uint32_t idx_count_max;
 };
 
 
@@ -87,11 +87,19 @@ struct nbr_vtx_buf {
         uint32_t i_count_max;
 };
 
+
 struct nbr_cmd_buf {
-        struct nbr_cmd cmds[4096];
+        struct nbr_cmd *cmds;
         uint32_t cmd_count;
+        uint32_t cmd_count_max;
 
         struct nbr_vtx_buf vtx_buf;
+};
+
+
+struct nbr_draw_data {
+        struct nbr_cmd_buf **cmd_bufs;
+        uint32_t cmd_buf_count;
 };
 
 
@@ -119,6 +127,7 @@ struct nbi_font {
         float space_width;
 };
 
+
 typedef struct nb_renderer_ctx * nbr_ctx_t;
 
 struct nb_renderer_ctx {
@@ -126,13 +135,6 @@ struct nb_renderer_ctx {
         uint32_t font_count;
         struct nbi_font *font;
         struct nbi_font *debug_font_next;
-
-        uint8_t *vtx_mem;
-
-        struct nbr_cmd_buf cmd_bufs[NBR_CMD_BUF_COUNT_MAX];
-        uint32_t cmd_buf_count;
-
-        struct nbr_draw_data draw_data;
 
         int width, height;
 };
@@ -149,27 +151,6 @@ nbr_ctx_create(
 nb_result
 nbr_ctx_destroy(
         nbr_ctx_t *c);
-
-/*
- * return NB_OK if the new frame has started
- * return NB_INVALID_PARAMS if ctx if not valid
- * return NB_FAIL if an internal error occured
- */
-nb_result
-nbr_frame_begin(
-        struct nb_renderer_ctx * ctx);      /* required */
-
-
-/*
- * return NB_OK if the new frame was submitted
- * return NB_INVALID_PARAMS if ctx is not valid
- * return NB_FAIL if an internal error occured
- */
-nb_result
-nbr_frame_submit(
-        struct nb_renderer_ctx *ctx,        /* required */
-        struct nbr_cmd_buf **cmd_bufs,      /* optional - null renders nothing */
-        uint32_t cmd_buf_count);                 /* 0 renders nothing */
 
 
 /* ----------------------------------------------------------------- Fonts -- */
@@ -202,22 +183,16 @@ nb_debug_get_font(
 /* ------------------------------------------------------- Render Commands -- */
 
 
-nb_result
-nbr_cmd_buf_create(
-        struct nb_renderer_ctx *ctx,       /* required */
-        struct nbr_cmd_buf **out_buf);     /* required */
+uint32_t
+nbr_cmd_buf_get_size(struct nbr_cmd_limits lim);
 
 
-/*
- * Get the render cmds
- * returns NB_OK on success
- * returns NB_FAIL if an internal error occured
- * returns NB_INVALID_PARAMS if ctx or data is null
- */
 nb_result
-nbr_get_draw_data(
-        struct nb_renderer_ctx *ctx,        /* required */
-        struct nbr_draw_data *data);      /* required */
+nbr_cmd_buf_init(struct nbr_cmd_buf **out_buf, struct nbr_cmd_limits lim, void *mem);
+
+
+nb_result
+nbr_cmd_buf_clear(struct nbr_cmd_buf *buf);
 
 
 void
@@ -286,27 +261,6 @@ nbr_scissor_clear(
         struct nbr_cmd_buf * buf);
 
 
-uint32_t
-nbi_char_valid(
-        struct nbi_font * font,
-        uint32_t cp);
-
-
-void
-nbi_get_glyph_quad(
-        struct nbi_font * font,
-        uint32_t cp,
-        float * x,
-        float * y,
-        stbtt_aligned_quad * q);
-
-
-float
-nbi_get_glyph_width(
-        struct nbi_font * font,
-        uint32_t cp);
-
-
 /* ---------------------------------------------------------- Render State -- */
 
 
@@ -372,13 +326,12 @@ nbr_viewport_get(
 
 
 #define NB_ARR_COUNT(ARR) (sizeof((ARR)) / sizeof((ARR)[0]))
-#define NB_ARRAY_DATA(ARR) &ARR[0]
 
 
 /* ----------------------------------------------------------- Text / Font -- */
 
 
-uint32_t
+static uint32_t
 nbi_get_font_range_idx(
         struct nbi_font * font,
         uint32_t cp)
@@ -397,7 +350,7 @@ nbi_get_font_range_idx(
 }
 
 
-uint32_t
+static uint32_t
 nbi_char_valid(struct nbi_font * font, uint32_t cp) {
         uint32_t range_idx = nbi_get_font_range_idx(font, cp);
         uint32_t result = range_idx < font->range_count ? 1 : 0;
@@ -405,7 +358,7 @@ nbi_char_valid(struct nbi_font * font, uint32_t cp) {
 }
 
 
-void
+static void
 nbi_get_glyph_quad(
         struct nbi_font * font,
         uint32_t cp,
@@ -424,7 +377,7 @@ nbi_get_glyph_quad(
         }
 }
 
-float
+static float
 nbi_get_glyph_width(struct nbi_font * font, uint32_t cp) {
         float result = 0.0f;
         if(nbi_char_valid(font, cp)) {
@@ -454,7 +407,7 @@ nb_debug_get_font(
 }
 
 
-void
+static void
 nbi_push_font_range(
         struct nbi_font *font,
         stbtt_pack_context *stbtt,
@@ -479,7 +432,7 @@ nbi_push_font_range(
 }
 
 
-void
+static void
 nbi_font_init(
         struct nbi_font *font,
         uint8_t *ttf,
@@ -707,35 +660,69 @@ nbi_decode_utf8_cp(
 
 /* ------------------------------------------------------- Render Commands -- */
 
+uint32_t
+nbr_cmd_buf_get_size(struct nbr_cmd_limits lim) {
+        uint32_t result = sizeof(struct nbr_cmd_buf);
+        result += sizeof(struct nbr_cmd) * lim.cmd_count_max;
+        result += sizeof(struct nbr_vtx) * lim.vtx_count_max;
+        result += sizeof(nbr_idx) * lim.idx_count_max;
+        return result;
+}
 
 nb_result
-nbr_cmd_buf_create(
-        struct nb_renderer_ctx *ctx,
-        struct nbr_cmd_buf **out_buf)
-{
-        if(!ctx || !out_buf) {
-                NB_ASSERT(!"NB_INVALID_PARAMS");
-                return NB_INVALID_PARAMS;
-        }
+nbr_cmd_buf_init(struct nbr_cmd_buf **out_buf, struct nbr_cmd_limits lim, void *mem) {
+        nb_result result = NB_OK;
+        if(out_buf && mem) {
+                uint8_t *ptr = (uint8_t *)mem;
 
-        struct nbr_cmd_buf *buf = 0;
-        if(ctx->cmd_buf_count < NB_ARR_COUNT(ctx->cmd_bufs)) {
-                buf = ctx->cmd_bufs + ctx->cmd_buf_count++;
+                struct nbr_cmd_buf *buf = (struct nbr_cmd_buf *)ptr;
+                ptr += sizeof(struct nbr_cmd_buf);
+
+                buf->cmds = (struct nbr_cmd *)ptr;
+                ptr += sizeof(struct nbr_cmd) * lim.cmd_count_max;
+                buf->cmd_count = 0;
+                buf->cmd_count_max = lim.cmd_count_max;
+
+                buf->vtx_buf.v = (struct nbr_vtx *)ptr;
+                ptr += sizeof(struct nbr_vtx) * lim.vtx_count_max;
+                buf->vtx_buf.v_count = 0;
+                buf->vtx_buf.v_count_max = lim.vtx_count_max;
+
+                buf->vtx_buf.i = (nbr_idx *)ptr;
+                ptr += sizeof(nbr_idx) * lim.idx_count_max;
+                buf->vtx_buf.i_count = 0;
+                buf->vtx_buf.i_count_max = lim.idx_count_max;
+
+                *out_buf = buf;
         }
         else {
-                NB_ASSERT(!"nbr_cmd_buf_create: cmds full!");
+                NB_ASSERT(!"nbr_cmd_buf_init: NB_INVALID_PARAMS");
+                result = NB_INVALID_PARAMS;
         }
+        return result;
+}
 
-        *out_buf = buf;
 
-        return NB_OK;
+nb_result
+nbr_cmd_buf_clear(struct nbr_cmd_buf *buf) {
+        nb_result result = NB_OK;
+        if(buf) {
+                buf->cmd_count = 0;
+                buf->vtx_buf.v_count = 0;
+                buf->vtx_buf.i_count = 0;
+        }
+        else {
+                NB_ASSERT(!"nbr_cmd_buf_clear: NB_INVALID_PARAMS");
+                result = NB_INVALID_PARAMS;
+        }
+        return result;
 }
 
 static struct nbr_cmd *
 nbi_cmd_push(struct nbr_cmd_buf *buf) {
         struct nbr_cmd *result = 0;
         if(buf) {
-                if(buf->cmd_count < NB_ARR_COUNT(buf->cmds)) {
+                if(buf->cmd_count < buf->cmd_count_max) {
                         result = buf->cmds + buf->cmd_count++;
                         struct nbr_cmd empty_cmd = { 0 };
                         *result = empty_cmd;
@@ -1201,22 +1188,6 @@ nbr_scissor_clear(struct nbr_cmd_buf *buf) {
 
 
 nb_result
-nbr_get_draw_data(
-        struct nb_renderer_ctx * ctx,
-        struct nbr_draw_data * data)
-{
-        if(!ctx || !data) {
-                NB_ASSERT(!"NB_INVALID_PARAMS");
-                return NB_INVALID_PARAMS;
-        }
-
-        /* TODO(Albert): REMOVE!! */
-        *data = ctx->draw_data;
-
-        return NB_OK;
-}
-
-nb_result
 nb_debug_set_font(
         struct nb_renderer_ctx * ctx,
         uint32_t idx)
@@ -1249,32 +1220,7 @@ nbr_ctx_create(
                 goto CTX_CLEANUP_AND_FAIL;
         }
 
-        memset(ctx, 0, sizeof(*ctx));
-
-        uint32_t vtx_count_max = 65536;
-        if(vtx_count_max > NBR_VERTEX_COUNT_MAX) {
-                vtx_count_max = NBR_VERTEX_COUNT_MAX;
-        }
-
-        size_t vtx_data_size = vtx_count_max * sizeof(struct nbr_vtx);
-        size_t idx_data_size = vtx_count_max * sizeof(nbr_idx);
-        size_t vtx_mem_size = (vtx_data_size + idx_data_size) * NB_ARR_COUNT(ctx->cmd_bufs);
-        ctx->vtx_mem = NB_ALLOC(vtx_mem_size);
-        if(!ctx->vtx_mem) {
-                NB_ASSERT(!"NB_FAIL");
-                goto CTX_CLEANUP_AND_FAIL;
-        }
-
-        int i;
-
-        uint8_t *vtx_ptr = ctx->vtx_mem;
-        for(i = 0; i < NB_ARR_COUNT(ctx->cmd_bufs); i++) {
-                struct nbr_vtx_buf *buf = &ctx->cmd_bufs[i].vtx_buf;
-                buf->v = (struct nbr_vtx *)vtx_ptr; vtx_ptr += vtx_data_size;
-                buf->v_count_max = vtx_count_max;
-                buf->i = (nbr_idx *)vtx_ptr; vtx_ptr += idx_data_size;
-                buf->i_count_max = vtx_count_max;
-        }
+        NB_ZERO_MEM(ctx);
 
         struct nbi_font_info { uint8_t * ttf; float height; };
         struct nbi_font_info fi[] = {
@@ -1288,9 +1234,8 @@ nbr_ctx_create(
                 ctx->font_count = NB_ARR_COUNT(ctx->fonts);
         }
 
-        int f_count = ctx->font_count;
-
-        for(i = 0; i < f_count; i++) {
+        uint32_t i;
+        for(i = 0; i < ctx->font_count; i++) {
                 nbi_font_init(ctx->fonts + i, fi[i].ttf, fi[i].height);
         }
 
@@ -1302,10 +1247,6 @@ nbr_ctx_create(
 
         /* Failed to create context, most likely allocation failure. */
         CTX_CLEANUP_AND_FAIL:
-
-        if(ctx && ctx->vtx_mem) {
-                NB_FREE(ctx->vtx_mem);
-        }
 
         if (ctx) {
                 NB_FREE(ctx);
@@ -1325,73 +1266,6 @@ nbr_ctx_destroy(
         }
 
         return NB_FAIL;
-}
-
-
-nb_result
-nbr_frame_begin(
-        struct nb_renderer_ctx * ctx)
-{
-        if(!ctx) {
-                NB_ASSERT(!"NB_INVALID_PARAMS");
-                return NB_INVALID_PARAMS;
-        }
-
-        /* clear cmds */
-        uint32_t i;
-        for(i = 0; i < ctx->cmd_buf_count; ++i) {
-                ctx->cmd_bufs[i].cmd_count = 0;
-                ctx->cmd_bufs[i].vtx_buf.v_count = 0;
-                ctx->cmd_bufs[i].vtx_buf.i_count = 0;
-        }
-        ctx->cmd_buf_count = 0;
-
-        ctx->draw_data.cmd_buf_count = 0;
-
-        return NB_OK;
-}
-
-
-nb_result
-nbr_frame_submit(
-        struct nb_renderer_ctx *ctx,
-        struct nbr_cmd_buf **cmd_bufs,
-        uint32_t cmd_buf_count)
-{
-        /* validate */
-        if(!ctx) {
-                NB_ASSERT(!"NB_INVALID_PARAMS");
-                return NB_INVALID_PARAMS;
-        }
-
-        struct nbr_draw_data *draw = &ctx->draw_data;
-
-        if(cmd_buf_count > (int)NB_ARR_COUNT(draw->cmd_bufs)) {
-                NB_ASSERT(!"NB_FAIL - To many cmd buffers submitted");
-                return NB_FAIL;
-        }
-
-        if(cmd_buf_count > 0 && cmd_bufs == 0) {
-                NB_ASSERT(!"NB_INVALID_PARAMS");
-                return NB_INVALID_PARAMS;
-        }
-
-        /* push cmds into queue */
-        uint32_t submit = 0;
-        uint32_t i;
-        for(i = 0; i < cmd_buf_count; ++i) {
-                struct nbr_cmd_buf *buf = cmd_bufs[i];
-                if(buf) {
-                        draw->cmd_bufs[submit++] = buf;
-                }
-                else {
-                        NB_ASSERT(!"Trying to submit null cmd buffer!");
-                }
-        }
-
-        draw->cmd_buf_count = submit;
-
-        return NB_OK;
 }
 
 
@@ -1445,7 +1319,6 @@ nbr_viewport_get(
 #undef NB_FREE
 #undef NB_ZERO_MEM
 #undef NB_ARR_COUNT
-#undef NB_ARRAY_DATA
 
 
 #endif

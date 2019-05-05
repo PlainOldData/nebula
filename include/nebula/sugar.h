@@ -53,7 +53,7 @@ nbs_ctx_get_ctx(
  */
 nb_result
 nbs_frame_begin(
-        nbs_ctx_t tx);                      /* required */
+        nbs_ctx_t ctx);                      /* required */
 
 
 /*
@@ -62,8 +62,18 @@ nbs_frame_begin(
  *  returns `NB_FAIL` if an internal error occured
  */
 nb_result
-nbs_frame_submit(
+nbs_frame_end(
         nbs_ctx_t ctx);                     /* required */
+
+
+/*
+ *  returns `NB_OK` on success
+ *  returns `NB_INVALID_PARAMS` if ctx is null
+ */
+nb_result
+nbs_get_draw_data(
+        nbs_ctx_t ctx,                     /* required */
+        struct nbr_draw_data *data);       /* required */
 
 
 /* -------------------------------------------------------- Window widgets -- */
@@ -124,7 +134,12 @@ struct nbs_ctx {
         nbc_ctx_t core_ctx;
         nbr_ctx_t rdr_ctx;
 
+        uint8_t *window_mem;
+        struct nbr_cmd_buf *window_bufs[32];
         struct nb_window windows[32];
+
+        struct nbr_cmd_buf *draw_bufs[32];
+        uint32_t draw_buf_count;
 };
 
 
@@ -210,7 +225,7 @@ nbi_window_search(
         struct nb_window *window_array,     /* required */
         int arr_count,                      /* required - greater than zero */
         uint64_t hash_key,                  /* required - greater than zero */
-        struct nb_window ** out_win)        /* required */
+        struct nb_window **out_win)         /* required */
 {
         /* validate */
         if(!window_array || !arr_count || !hash_key) {
@@ -284,12 +299,7 @@ nbs_window_begin(
                 return 0;
         }
 
-        nb_result ok = nbr_cmd_buf_create(ctx->rdr_ctx, &window->cmd_buf);
-
-        if(ok != NB_OK) {
-                NB_ASSERT(!"NB_FAIL - Failed creating rdr cmd buffer");
-                return 0;
-        }
+        window->cmd_buf = ctx->window_bufs[window->win_idx];
 
         /* imgui */
         struct nb_collider_desc coll_desc;
@@ -481,19 +491,18 @@ nbs_frame_begin(
                 return NB_FAIL;
         };
 
-        /* renderer */
-        ok = nbr_frame_begin(ctx->rdr_ctx);
-
-        if(ok != NB_OK) {
-                NB_ASSERT(!"NB_FAIL - Failed to start renderer frame");
-                return NB_FAIL;
+        uint32_t i;
+        for(i = 0; i < NB_ARR_COUNT(ctx->window_bufs); i++) {
+                nbr_cmd_buf_clear(ctx->window_bufs[i]);
         }
+
+        ctx->draw_buf_count = 0;
 
         return NB_OK;
 }
 
 nb_result
-nbs_frame_submit(
+nbs_frame_end(
         nbs_ctx_t ctx)
 {
         if(!ctx) {
@@ -511,38 +520,42 @@ nbs_frame_submit(
                 return NB_FAIL;
         }
 
-        /* renderer frame */
-        struct nbr_cmd_buf *cmds[32];
-        int cmd_count = 0;
+        /* build array of cmd bufs */
+        ctx->draw_buf_count = 0;
 
         int win_count = NB_ARR_COUNT(ctx->windows);
         int i;
 
-        /* build array of cmds */
         for(i = win_count - 1; i >= 0; --i) {
                 if(ctx->windows[i].unique_id > 0) {
-                        cmds[cmd_count] = ctx->windows[i].cmd_buf;
-                        cmd_count += 1;
+                        ctx->draw_bufs[ctx->draw_buf_count] = ctx->windows[i].cmd_buf;
+                        ctx->draw_buf_count += 1;
 
-                        if(cmd_count >= (int)NB_ARR_COUNT(cmds)) {
+                        if(ctx->draw_buf_count >= (int)NB_ARR_COUNT(ctx->draw_bufs)) {
                                 break;
                         }
                 }
         }
 
-        ok = nbr_frame_submit(
-                ctx->rdr_ctx,
-                &cmds[0],
-                cmd_count);
-
-        if(ok != NB_OK) {
-                NB_ASSERT(!"NB_FAIL - Failed to submit renderer frame");
-                return NB_FAIL;
-        }
-
         return NB_OK;
 }
 
+nb_result
+nbs_get_draw_data(
+        nbs_ctx_t ctx,
+        struct nbr_draw_data *data)
+{
+        if(!ctx || !data) {
+                NB_ASSERT(!"NB_INVALID_PARAMS");
+                return NB_INVALID_PARAMS;
+        }
+
+        data->cmd_bufs = ctx->draw_bufs;
+        data->cmd_buf_count = ctx->draw_buf_count;
+
+        return NB_OK;
+
+}
 
 /* -------------------------------------------------------------- Lifetime -- */
 
@@ -581,6 +594,21 @@ nbs_ctx_create(
                 goto CTX_FAIL_CLEANUP;
         }
 
+        struct nbr_cmd_limits cmd_lim = { 4096, 65536, 65536, };
+        uint32_t cmd_buf_size = nbr_cmd_buf_get_size(cmd_lim);
+        new_ctx->window_mem = NB_ALLOC(cmd_buf_size * NB_ARR_COUNT(new_ctx->window_bufs));
+
+        if(!new_ctx->window_mem) {
+                goto CTX_FAIL_CLEANUP;
+        }
+
+        uint32_t i;
+        uint8_t *ptr = new_ctx->window_mem;
+        for(i = 0; i < NB_ARR_COUNT(new_ctx->window_bufs); ++i) {
+                nbr_cmd_buf_init(new_ctx->window_bufs + i, cmd_lim, ptr);
+                ptr += cmd_buf_size;
+        }
+
         *ctx = new_ctx;
 
         return NB_OK;
@@ -595,6 +623,10 @@ nbs_ctx_create(
 
         if (new_ctx && new_ctx->rdr_ctx) {
                 nbr_ctx_destroy(&new_ctx->rdr_ctx);
+        }
+
+        if(new_ctx && new_ctx->window_mem) {
+                NB_FREE(new_ctx->window_mem);
         }
 
         if (new_ctx) {

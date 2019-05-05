@@ -8,6 +8,8 @@
 typedef struct nbogl3_ctx * nbogl3_ctx_t;
 typedef struct nb_renderer_ctx * nbr_ctx_t;
 
+struct nbr_draw_data;
+
 
 /* -------------------------------------------------------------- Lifetime -- */
 
@@ -29,7 +31,8 @@ nbogl3_ctx_destroy(
 nb_result
 nbogl3_render(
         nbogl3_ctx_t ctx,
-        nbr_ctx_t nbr_ctx);
+        nbr_ctx_t nbr_ctx,
+        struct nbr_draw_data *draw);
 
 
 /* inc guard */
@@ -270,9 +273,10 @@ struct nbogl3_ctx {
 nb_result
 nbogl3_render(
         nbogl3_ctx_t ctx,
-        nbr_ctx_t nbr_ctx)
+        nbr_ctx_t nbr_ctx,
+        struct nbr_draw_data *draw)
 {
-        if (!ctx || !nbr_ctx) {
+        if (!ctx || !nbr_ctx || !draw) {
                 return NB_INVALID_PARAMS;
         }
 
@@ -286,11 +290,6 @@ nbogl3_render(
 
         int vp_width, vp_height;
         nbr_viewport_get(nbr_ctx, &vp_width, &vp_height);
-
-        /* get nebula render data */
-        struct nbr_draw_data rd;
-        memset(&rd, 0, sizeof(rd));
-        nbr_get_draw_data(nbr_ctx, &rd);
 
         /* setup gl */
         glDisable(GL_DEPTH_TEST);
@@ -339,8 +338,8 @@ nbogl3_render(
 
         /* render */
         unsigned int buf_idx, i;
-        for (buf_idx = 0; buf_idx < rd.cmd_buf_count; buf_idx++) {
-                struct nbr_cmd_buf *cmd_buf = rd.cmd_bufs[buf_idx];
+        for (buf_idx = 0; buf_idx < draw->cmd_buf_count; buf_idx++) {
+                struct nbr_cmd_buf *cmd_buf = draw->cmd_bufs[buf_idx];
 
                 struct nbr_vtx_buf *vtx_buf = &cmd_buf->vtx_buf;
                 glBufferData(GL_ARRAY_BUFFER, sizeof(struct nbr_vtx) * vtx_buf->v_count, vtx_buf->v, GL_STREAM_DRAW);
@@ -529,20 +528,14 @@ nbogl3_ctx_create(
         glEnableVertexAttribArray(ctx->incol);
         glEnableVertexAttribArray(ctx->intex);
 
-        struct vertex {
-                float pos[2];
-                float uv[2];
-                float color[4];
-        };
-
-        GLsizei stride = sizeof(struct vertex);
-        void * ptr = (void*)offsetof(struct vertex, pos);
+        GLsizei stride = sizeof(struct nbr_vtx);
+        void *ptr = (void *)offsetof(struct nbr_vtx, x);
         glVertexAttribPointer(ctx->inpos, 2, GL_FLOAT, GL_FALSE, stride, ptr);
 
-        ptr = (void*)offsetof(struct vertex, uv);
+        ptr = (void *)offsetof(struct nbr_vtx, u);
         glVertexAttribPointer(ctx->intex, 2, GL_FLOAT, GL_FALSE, stride, ptr);
 
-        ptr = (void*)offsetof(struct vertex, color);
+        ptr = (void *)offsetof(struct nbr_vtx, r);
         glVertexAttribPointer(ctx->incol, 4, GL_FLOAT, GL_FALSE, stride, ptr);
 
         if(NEB_OGL3_DEBUG_SUPPORT) {
