@@ -191,8 +191,12 @@ nb_result
 nbr_cmd_buf_init(struct nbr_cmd_buf **out_buf, struct nbr_cmd_limits lim, void *mem);
 
 
-nb_result
+void
 nbr_cmd_buf_clear(struct nbr_cmd_buf *buf);
+
+
+void
+nbr_cmd_buf_array_clear(struct nbr_cmd_buf **bufs, uint32_t buf_count);
 
 
 void
@@ -660,6 +664,7 @@ nbi_decode_utf8_cp(
 
 /* ------------------------------------------------------- Render Commands -- */
 
+
 uint32_t
 nbr_cmd_buf_get_size(struct nbr_cmd_limits lim) {
         uint32_t result = sizeof(struct nbr_cmd_buf);
@@ -668,6 +673,7 @@ nbr_cmd_buf_get_size(struct nbr_cmd_limits lim) {
         result += sizeof(nbr_idx) * lim.idx_count_max;
         return result;
 }
+
 
 nb_result
 nbr_cmd_buf_init(struct nbr_cmd_buf **out_buf, struct nbr_cmd_limits lim, void *mem) {
@@ -703,20 +709,32 @@ nbr_cmd_buf_init(struct nbr_cmd_buf **out_buf, struct nbr_cmd_limits lim, void *
 }
 
 
-nb_result
-nbr_cmd_buf_clear(struct nbr_cmd_buf *buf) {
-        nb_result result = NB_OK;
-        if(buf) {
-                buf->cmd_count = 0;
-                buf->vtx_buf.v_count = 0;
-                buf->vtx_buf.i_count = 0;
+void
+nbr_cmd_buf_array_clear(struct nbr_cmd_buf **bufs, uint32_t buf_count) {
+        if(bufs && buf_count) {
+                uint32_t i;
+                for(i = 0; i < buf_count; i++) {
+                        struct nbr_cmd_buf *buf = bufs[i];
+                        if(buf) {
+                                buf->cmd_count = 0;
+                                buf->vtx_buf.v_count = 0;
+                                buf->vtx_buf.i_count = 0;
+                        }
+                        else {
+                                NB_ASSERT(!"nbr_cmd_buf_array_clear: buf is null!");
+                        }
+                }
         }
-        else {
-                NB_ASSERT(!"nbr_cmd_buf_clear: NB_INVALID_PARAMS");
-                result = NB_INVALID_PARAMS;
-        }
-        return result;
 }
+
+
+void
+nbr_cmd_buf_clear(struct nbr_cmd_buf *buf) {
+        if(buf) {
+                nbr_cmd_buf_array_clear(&buf, 1);
+        }
+}
+
 
 static struct nbr_cmd *
 nbi_cmd_push(struct nbr_cmd_buf *buf) {

@@ -491,11 +491,7 @@ nbs_frame_begin(
                 return NB_FAIL;
         };
 
-        uint32_t i;
-        for(i = 0; i < NB_ARR_COUNT(ctx->window_bufs); i++) {
-                nbr_cmd_buf_clear(ctx->window_bufs[i]);
-        }
-
+        nbr_cmd_buf_array_clear(ctx->window_bufs, NB_ARR_COUNT(ctx->window_bufs));
         ctx->draw_buf_count = 0;
 
         return NB_OK;
